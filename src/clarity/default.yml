@@ -1,0 +1,476 @@
+# clarity default pack. Copy to clarity.yml and edit to override.
+# Rules merge by id: a rule with an existing id overrides its fields,
+# a new id adds a rule, `disabled: true` removes one.
+version: 1
+
+# Penalty per excess finding = category weight x severity weight.
+# cap is the most a category can subtract from the 100-point score.
+severity_weights: {info: 0.5, warning: 1.0, error: 1.5}
+
+# Reported separately from the style score. Never averaged into it.
+# target_grade is a band. fail_outside_band makes --fail-under also fail on the band.
+readability:
+  target_grade: [8, 12]
+  fail_outside_band: false
+
+# Add terms without writing a rule. Findings report under the watchlist category.
+# watchlist:
+#   - {term: synergy, max_per_1k: 0}
+#   - {term: "load-bearing", max_per_1k: 0, match: phrase}
+#   - {term: bedrock, max_per_1k: 1, require_concrete_governor: true}
+
+categories:
+  - {n: 1, id: significance, name: Significance-asserting noun phrases, weight: 3.0, cap: 15}
+  - {n: 2, id: discovery, name: Discovery narration, weight: 2.0, cap: 10}
+  - {n: 3, id: escalation, name: Escalation, weight: 3.0, cap: 15}
+  - {n: 4, id: intensifiers, name: Intensifiers, weight: 1.5, cap: 15}
+  - {n: 5, id: filler, name: Filler transitions, weight: 2.0, cap: 15}
+  - {n: 6, id: corporate, name: Corporate vocabulary, weight: 2.5, cap: 20}
+  - {n: 7, id: structural, name: Structural tics, weight: 3.0, cap: 20}
+  - {n: 8, id: hedges, name: Hedges, weight: 1.5, cap: 10}
+  - {n: 9, id: false-balance, name: False balance, weight: 3.0, cap: 10}
+  - {n: 10, id: false-agency, name: False agency, weight: 2.5, cap: 15}
+  - {n: 11, id: verbosity, name: Verbosity, weight: 1.5, cap: 15}
+  - {n: 12, id: sentence-flow, name: Sentence flow and punctuation, weight: 2.0, cap: 15}
+  - {n: 13, id: watchlist, name: User watchlist, weight: 2.0, cap: 15}
+
+rules:
+  - id: significance-np
+    category: 1
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    message: Significance-asserting noun phrase. State the point directly.
+    pattern:
+      - {POS: DET}
+      - {LEMMA: {IN: [useful, interesting, important, key, crucial, clever]}}
+      - {LEMMA: {IN: [part, thing, point, bit, question, answer]}}
+      - {LEMMA: be}
+  - id: significance-phrase
+    category: 1
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    message: Announces significance instead of stating it.
+    phrases:
+      - the real question is
+      - what matters here is
+      - the thing to understand is
+      - the short answer is
+  - id: discovery-narration
+    category: 2
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    clause_initial: true
+    message: Discovery narration. Report the fact without the reveal.
+    phrases:
+      - turns out
+      - turned out
+      - it turns out
+      - it turned out
+      - as it happens
+      - funnily enough
+      - oddly enough
+      - somehow
+  - id: escalation-contrast
+    category: 3
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    backend: structural
+    function: escalation_window
+    message: '"Not just X" escalation. State Y without the setup.'
+    params: {window: 12}
+  - id: escalation-phrase
+    category: 3
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    clause_initial: true
+    message: Escalation phrase.
+    phrases:
+      - more than that
+      - and that is before you even consider
+  - id: intensifier
+    category: 4
+    max_per_1k: 1
+    severity: warning
+    confidence: exact
+    match: lower
+    message: Intensifier adds no information.
+    phrases:
+      - genuinely
+      - truly
+      - deeply
+      - really
+      - actually
+      - crucially
+      - notably
+      - importantly
+      - significantly
+      - make no mistake
+      - to be clear
+  - id: filler-transition
+    category: 5
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    clause_initial: true
+    message: Filler transition. Start with the content.
+    phrases:
+      - it is worth noting
+      - it is worth saying
+      - it is worth mentioning
+      - it is worth remembering
+      - that said
+      - ultimately
+      - at the end of the day
+      - when it comes to
+      - in terms of
+      - here is the thing
+      - the reality is
+      - in short
+  - id: corporate-flat
+    category: 6
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    message: Corporate vocabulary. Use a plainer word.
+    phrases:
+      - leverage
+      - unlock
+      - empower
+      - seamless
+      - robust
+      - holistic
+      - streamline
+      - elevate
+      - transform
+      - game-changer
+      - best-in-class
+      - cutting-edge
+      - a testament to
+      - speaks volumes
+  - id: corporate-metaphor
+    category: 6
+    backend: dependency
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    anchor: obj
+    concreteness_max: 3.0
+    message: Metaphorical use. The governed noun is abstract.
+    patterns:
+      - - {RIGHT_ID: head, RIGHT_ATTRS: {LEMMA: {IN: [delve, navigate, underscore]}, POS: VERB}}
+        - {LEFT_ID: head, REL_OP: ">", RIGHT_ID: obj, RIGHT_ATTRS: {DEP: dobj}}
+      - - {RIGHT_ID: head, RIGHT_ATTRS: {LEMMA: {IN: [delve, dive]}, POS: VERB}}
+        - {LEFT_ID: head, REL_OP: ">", RIGHT_ID: prep, RIGHT_ATTRS: {LOWER: into}}
+        - {LEFT_ID: prep, REL_OP: ">", RIGHT_ID: obj, RIGHT_ATTRS: {DEP: pobj}}
+      - - {RIGHT_ID: head, RIGHT_ATTRS: {LEMMA: {IN: [landscape, realm, tapestry, ecosystem]}, POS: NOUN}}
+        - {LEFT_ID: head, REL_OP: ">", RIGHT_ID: prep, RIGHT_ATTRS: {LOWER: of}}
+        - {LEFT_ID: prep, REL_OP: ">", RIGHT_ID: obj, RIGHT_ATTRS: {DEP: pobj}}
+  - id: structural-rule-of-three
+    category: 7
+    backend: structural
+    function: rule_of_three
+    max_per_1k: 2
+    severity: info
+    confidence: inferred
+    message: Rule-of-three list.
+  - id: structural-fragments
+    category: 7
+    backend: structural
+    function: consecutive_fragments
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Consecutive sentence fragments.
+    params: {min_run: 2}
+  - id: structural-question-answer
+    category: 7
+    backend: structural
+    function: question_answer
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Rhetorical question answered immediately.
+    params: {jaccard: 0.4}
+  - id: structural-restatement
+    category: 7
+    backend: structural
+    function: section_restatement
+    scope: section
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Section ends by restating its opening.
+    params: {jaccard: 0.5, min_sentences: 3}
+  - id: structural-rather-than
+    category: 7
+    max_per_1k: 1
+    severity: info
+    confidence: exact
+    match: lower
+    message: '"X rather than Y" construction.'
+    phrases:
+      - rather than
+  - id: structural-which-is
+    category: 7
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    message: Emphatic "which is" tag.
+    phrases:
+      - which is exactly
+      - which is the point
+  - id: hedge
+    category: 8
+    max_per_1k: 2
+    severity: info
+    confidence: exact
+    message: Hedge.
+    phrases:
+      - can help to
+      - may be able to
+      - arguably
+      - somewhat
+      - one of the most
+  - id: hedge-stacking
+    category: 8
+    backend: structural
+    function: hedge_stacking
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    message: Two or more hedges in one clause.
+    params:
+      phrases: [can help to, may be able to, arguably, somewhat, one of the most]
+  - id: false-balance-while
+    category: 9
+    backend: dependency
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Concessive "While X, it is also true that Y".
+    patterns:
+      - - {RIGHT_ID: main, RIGHT_ATTRS: {POS: {IN: [AUX, VERB]}}}
+        - {LEFT_ID: main, REL_OP: ">", RIGHT_ID: adv, RIGHT_ATTRS: {DEP: advcl}}
+        - {LEFT_ID: adv, REL_OP: ">", RIGHT_ID: mark, RIGHT_ATTRS: {LOWER: {IN: [while, although, though, whilst]}}}
+        - {LEFT_ID: main, REL_OP: ">", RIGHT_ID: truth, RIGHT_ATTRS: {LEMMA: "true"}}
+    anchor: mark
+  - id: false-balance-one-size
+    category: 9
+    match: lower
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    message: '"No one-size-fits-all" is a non-answer.'
+    phrases:
+      - one-size-fits-all
+  - id: false-balance-it-depends
+    category: 9
+    backend: structural
+    function: it_depends_final
+    scope: section
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    message: '"It depends" as a section-final sentence.'
+  - id: false-agency
+    category: false-agency
+    backend: dependency
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Inanimate subject with a verb that needs an animate agent.
+    params:
+      require_inanimate: true
+      # Pairs handled by the exemption sub-rules below.
+      exclude:
+        - {subjects: [report, contract, paper, study, sign, section, clause, article, document, letter, email, law, statute, policy], verbs: [say, tell, suggest, argue, insist, admit, claim, state, whisper, scream, promise, warn]}
+        - {subjects: [data, datum, evidence, results, result, numbers, number, findings, finding, analysis, metrics, metric], verbs: [suggest, show, indicate, point, want, decide, choose, try, refuse, prefer, intend, seek, love, hate, enjoy, suffer, struggle, fear, care, see, notice, watch, hear, listen, feel]}
+    patterns:
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [say, tell, suggest, argue, insist, admit, claim, state, whisper, scream, promise, warn, know, believe, think, remember, understand, realize, assume, expect, want, decide, choose, try, refuse, prefer, intend, seek, see, notice, watch, hear, listen, feel, love, hate, enjoy, suffer, struggle, fear, care]}, POS: VERB}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
+    anchor: subj
+  - id: false-agency-document-source
+    category: false-agency
+    backend: dependency
+    max_per_1k: 4
+    severity: info
+    confidence: inferred
+    message: Document as speaker. Standard English, allowed in small doses.
+    params:
+      subjects: [report, contract, paper, study, sign, section, clause, article, document, letter, email, law, statute, policy]
+    patterns:
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [say, tell, suggest, argue, insist, admit, claim, state, whisper, scream, promise, warn]}, POS: VERB}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
+    anchor: subj
+  - id: false-agency-data-soft
+    category: false-agency
+    backend: dependency
+    max_per_1k: 2
+    severity: info
+    confidence: inferred
+    message: Data as speaker ("the data suggest"). Standard English, allowed in small doses.
+    params:
+      subjects: [data, datum, evidence, results, result, numbers, number, findings, finding, analysis, metrics, metric]
+    patterns:
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [suggest, show, indicate, point]}, POS: VERB}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
+    anchor: subj
+  - id: false-agency-data-hard
+    category: false-agency
+    backend: dependency
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Data given wants, feelings or perception.
+    params:
+      subjects: [data, datum, evidence, results, result, numbers, number, findings, finding, analysis, metrics, metric]
+    patterns:
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [want, decide, choose, try, refuse, prefer, intend, seek, love, hate, enjoy, suffer, struggle, fear, care, see, notice, watch, hear, listen, feel]}, POS: VERB}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
+    anchor: subj
+  - id: long-sentence
+    category: verbosity
+    backend: structural
+    function: long_sentence
+    max_per_1k: 2
+    severity: warning
+    confidence: exact
+    message: Sentence is too long.
+    params: {max_words: 35}
+  - id: nominalization
+    category: verbosity
+    backend: structural
+    function: nominalization
+    max_per_1k: 5
+    severity: info
+    confidence: inferred
+    message: Nominalization. Prefer the verb.
+    params: {suffixes: [tion, ment, ance, ence, ity, ness]}
+  - id: expletive-construction
+    category: verbosity
+    backend: structural
+    function: expletive_construction
+    max_per_1k: 2
+    severity: info
+    confidence: exact
+    message: Expletive construction. Name the subject.
+  - id: function-word-ratio
+    category: verbosity
+    backend: structural
+    function: function_word_ratio
+    scope: document
+    max_per_1k: 0
+    severity: info
+    confidence: inferred
+    message: Function-word ratio is outside the band.
+    params: {min: 0.35, max: 0.65, min_words: 8}
+  - id: syllables-per-word
+    category: verbosity
+    backend: structural
+    function: syllables_per_word
+    scope: document
+    max_per_1k: 0
+    severity: info
+    confidence: inferred
+    message: Average syllables per word is high.
+    params: {max: 1.8, min_words: 8}
+  - id: sentence-length-variance
+    category: verbosity
+    backend: structural
+    function: sentence_length_variance
+    scope: document
+    max_per_1k: 0
+    severity: info
+    confidence: inferred
+    message: Sentence lengths are uniform. Vary the rhythm.
+    params: {min_sentences: 5, min_stdev: 3.0}
+  - id: em-dash
+    category: sentence-flow
+    backend: structural
+    function: em_dash
+    max_per_1k: 0
+    severity: error
+    confidence: exact
+    message: Em dash. Use a comma, colon, or period.
+    suggestion: ","
+  - id: intro-transition-comma
+    category: sentence-flow
+    backend: structural
+    function: intro_transition_comma
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    message: Transitional opener needs a comma.
+    params:
+      openers: [however, therefore, moreover, furthermore, additionally, consequently,
+        nevertheless, nonetheless, meanwhile, otherwise, finally, similarly, likewise,
+        accordingly, subsequently, alternatively, specifically, for example, for instance,
+        in addition, in contrast, in conclusion, in fact, in particular, in summary,
+        on the other hand, as a result, of course, in other words, by contrast, after all,
+        at the same time]
+  - id: lowercase-after-terminal
+    category: sentence-flow
+    backend: structural
+    function: lowercase_after_terminal
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    message: Lowercase word after a sentence-ending mark.
+  - id: run-on-missing-comma
+    category: sentence-flow
+    backend: structural
+    function: run_on_missing_comma
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Missing comma before the conjunction joining two clauses.
+  - id: comma-splice
+    category: sentence-flow
+    backend: structural
+    function: comma_splice
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Comma splice. Use a period, semicolon, or conjunction.
+  - id: clause-overload
+    category: sentence-flow
+    backend: structural
+    function: clause_overload
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Too many clauses in one sentence.
+    params: {max_heads: 4, min_commas: 1}
+  - id: rare-punctuation-context
+    category: sentence-flow
+    backend: structural
+    function: rare_punctuation_context
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Punctuation in an unusual grammatical context.
+    params: {threshold_per_10k: 10}
+  - id: adjective-density
+    category: sentence-flow
+    backend: structural
+    function: adjective_density
+    scope: document
+    max_per_1k: 0
+    severity: info
+    confidence: inferred
+    message: Adjectives per noun is high.
+    params: {max_ratio: 0.6, min_words: 8}
+  - id: adjective-stack
+    category: sentence-flow
+    backend: structural
+    function: stacked_adjectives
+    max_per_1k: 0
+    severity: info
+    confidence: exact
+    message: Three or more adjectives stacked on one noun.
+    params: {max_stack: 3}

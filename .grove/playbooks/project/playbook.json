@@ -1,0 +1,30 @@
+{
+  "schema_version": "2026.08.25",
+  "meta": {
+    "name": "project",
+    "description": "Python 3.12 prose linter with spaCy and an MCP server, shipped as a Docker CLI"
+  },
+  "runners": [
+    {
+      "name": "build",
+      "description": "Build the Docker image (model and concreteness dataset baked in)",
+      "command": "make build"
+    },
+    {
+      "name": "test",
+      "description": "Run the pytest suite",
+      "command": "make test"
+    },
+    {
+      "name": "lint",
+      "description": "Run ruff, mypy and jscpd duplicate detection",
+      "command": "make lint"
+    },
+    {
+      "name": "run",
+      "description": "Run the clarity CLI in Docker; pass arguments such as 'check -' with stdin",
+      "command": "make run"
+    }
+  ],
+  "services": []
+}
