@@ -14,7 +14,7 @@ from typing import Any, ParamSpec, TypeVar
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 
-from clarity import bootstrap, prompts
+from clarity import bootstrap, prompts, surface
 from clarity.config import describe_rules as describe
 from clarity.config import load_config
 from clarity.engine import analyze
@@ -269,6 +269,13 @@ def resource_categories() -> str:
 @_reports(ResourceError)
 def resource_profiles() -> str:
     return _dump(bootstrap.profiles())
+
+
+@server.resource("clarity://surface", mime_type="application/json")
+@_reports(ResourceError)
+def resource_surface() -> str:
+    """Every rule field, enum, condition, metric, structural function and category in use."""
+    return _dump(surface.build(resolve(None, Path.cwd(), None).config))
 
 
 @server.resource("clarity://schema/rule", mime_type="text/markdown")

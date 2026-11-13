@@ -34,7 +34,9 @@ Steps:
    returns nothing useful, say so. Do not invent candidates.
 3. Read a sample of documents from each corpus so you can interpret the candidates. A bare
    n-gram list needs grouping a reader can follow.
-4. Read clarity://schema/rule and clarity://guide/authoring before drafting YAML.
+4. Read clarity://surface first: it lists every field, enum, condition, metric and structural
+   function a rule can use, so a draft is built from what exists and the loader will accept it.
+   Then read clarity://schema/rule and clarity://guide/authoring before drafting YAML.
 5. Group candidates into categories with a name and one sentence of description.
 6. For each group draft one rule definition and call test_rule with it and both paths. Report the
    good rate, bad rate and ratio exactly as returned.
@@ -110,8 +112,8 @@ Steps:
 
 1. Call corpus_stats on both paths and apply the corpus floors from bootstrap_rules. Under the
    hard floor, stop and say why.
-2. Read clarity://schema/composite and clarity://rules. Read a sample of documents from each
-   corpus to see which compound tells recur.
+2. Read clarity://surface, clarity://schema/composite and clarity://rules. Read a sample of
+   documents from each corpus to see which compound tells recur.
 3. Draft composites that pair rules from the pack (requires_all, requires_any, requires_none,
    with min_count where a repeat matters) in a scope where the pair reads as one tell.
 4. For each draft call test_composite with both paths. Report the composite ratio and the ratio

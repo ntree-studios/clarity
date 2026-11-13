@@ -2,7 +2,7 @@ IMAGE ?= clarity
 ARGS ?= check -
 JSCPD_VERSION ?= 5.4.3
 
-.PHONY: build test test-corpus lint run
+.PHONY: build test test-corpus lint run docs
 
 build:
 	docker build -t $(IMAGE) .
@@ -25,3 +25,8 @@ lint:
 
 run:
 	docker run -i --rm $(IMAGE) $(ARGS)
+
+# Rewrite the README regions that are rendered from the schema. The test suite fails if they are stale.
+docs:
+	docker build --target dev -t $(IMAGE)-dev .
+	docker run --rm -v "$(PWD)":/app -w /app $(IMAGE)-dev clarity surface --sync README.md

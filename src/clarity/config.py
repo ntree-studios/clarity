@@ -21,6 +21,19 @@ POSITIONS = (
 CONFIDENCES = ("exact", "inferred")
 SEVERITIES = ("info", "warning", "error")
 BACKENDS = ("phrase", "dependency", "structural", "composite")
+# Fields that belong to one backend. Everything not listed is common to every backend.
+BACKEND_FIELDS: dict[str, tuple[str, ...]] = {
+    "phrase": ("phrases", "lower_phrases", "pattern", "match"),
+    "dependency": ("patterns", "anchor", "concreteness_max", "next_lemma"),
+    "structural": ("function", "params"),
+    "composite": ("requires_all", "requires_any", "requires_none", "note"),
+}
+# What a backend cannot work without: any one field of a tuple satisfies that requirement.
+BACKEND_REQUIRES: dict[str, tuple[tuple[str, ...], ...]] = {
+    "phrase": (("phrases", "lower_phrases", "pattern"),),
+    "dependency": (("patterns",),),
+    "structural": (("function",),),
+}
 
 
 class ConfigError(ValueError):
@@ -137,8 +150,28 @@ def _build_rule(raw: dict[str, Any]) -> Rule:
             raise ConfigError(f"rule {rid}: {name} must be one of {allowed}, got {value!r}")
 
     _resolve_allowance(rule)
+    _check_requirements(rule)
 
     return rule
+
+
+def _check_requirements(rule: Rule) -> None:
+    """A rule that has nothing to match is a dead rule; refuse it at load."""
+    for options in BACKEND_REQUIRES.get(rule.backend, ()):
+        if not any(getattr(rule, name) for name in options):
+            head = ", ".join(options[:-1])
+            needs = options[0] if len(options) == 1 else f"{head} or {options[-1]}"
+
+            raise ConfigError(f"rule {rule.id}: backend {rule.backend} needs {needs}")
+
+    if rule.backend == "structural":
+        from clarity.matchers.structural import REGISTRY
+
+        if rule.function not in REGISTRY:
+            raise ConfigError(
+                f"rule {rule.id}: unknown structural function {rule.function!r}; "
+                f"see clarity surface --functions"
+            )
 
 
 def _resolve_allowance(rule: Rule) -> None:

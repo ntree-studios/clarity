@@ -33,6 +33,7 @@ clarity baseline build <corpus> [--name default] | list | show <name>
 clarity drift [path|-] [--baseline default] [--format text|json]
 clarity trend <path> [--metric name] [--rule id]
 clarity repeats [path|-] [--min-occurrences 3] [--since file]
+clarity surface [--fields|--enums|--conditions|--metrics|--functions|--categories|--mcp] [--format markdown|json]
 clarity mcp
 ```
 
@@ -100,13 +101,40 @@ Section rules (`count_scope: section` or `position: section-final`) need markdow
 
 The style score runs from 0 to 100. Each category's excess is weighted by category weight and severity, capped per category and subtracted from 100. Readability (Flesch Reading Ease, Flesch-Kincaid, Gunning Fog, SMOG, Coleman-Liau, ARI) is reported apart from the score. The reported grade is the mean of the five grade-level metrics, compared with the `readability.target_grade` band.
 
-Prose metrics are measurements with no sentence to blame. They are printed and never scored. Each is a registered metric (`clarity.metrics`) with declared scopes, so a new measurement is one registered function. The registry holds:
+Prose metrics are measurements with no sentence to blame. They are printed and never scored. Each is a registered metric (`clarity.metrics`) with declared scopes, so a new measurement is one registered function. The registry, from `clarity surface --metrics`:
 
-- **Length and variety:** sentence length, paragraph length, lexical diversity (MTLD), hapax ratio, sentence opener distribution, paragraph opener repetition.
-- **Sentence structure:** sentence type distribution (simple, compound, complex, compound-complex, fragment), subordination index, coordination to subordination ratio, clauses per sentence, mean dependency depth.
-- **Register:** voice distribution, modal density, nominal to verbal ratio, tense consistency, content-word ratio, given-new ordering, referential density, pronoun-antecedent distance, mean concreteness.
-- **Redundancy:** novelty rate (new content lemmas per sentence, with the three lowest paragraphs named by line) and sentence overlap.
-- **Document structure:** heading hierarchy (skipped levels, single-child sections, empty headings), list parallelism, code to prose ratio, link density.
+<!-- surface:metrics -->
+| Metric | Scopes | Tracked scalars |
+| --- | --- | --- |
+| `sentence_type_distribution` | `sentence`, `document` | `shares.simple`, `shares.compound`, `shares.complex`, `shares.compound-complex`, `shares.fragment` |
+| `subordination_index` | `sentence`, `paragraph`, `document` | `value` |
+| `coordination_subordination_ratio` | `sentence`, `paragraph`, `document` | `value` |
+| `clauses_per_sentence` | `sentence`, `paragraph`, `document` | `value` |
+| `mean_dependency_depth` | `sentence`, `paragraph`, `document` | `value` |
+| `sentence_opener_distribution` | `sentence`, `paragraph`, `document` | `distinct_share` |
+| `paragraph_opener_repetition` | `document` | `value` |
+| `voice_distribution` | `sentence`, `paragraph`, `document` | `passive_share` |
+| `modal_density` | `sentence`, `paragraph`, `document` | `per_1k` |
+| `nominal_verbal_ratio` | `sentence`, `paragraph`, `document` | `value` |
+| `tense_consistency` | `document` | `shift_rate` |
+| `hapax_ratio` | `sentence`, `paragraph`, `document` | `value` |
+| `pronoun_antecedent_distance` | `sentence`, `paragraph`, `document` | `mean` |
+| `heading_hierarchy` | `document` | `skipped_levels`, `single_child`, `empty` |
+| `list_parallelism` | `document` | `mismatched` |
+| `code_prose_ratio` | `document` | `value` |
+| `link_density` | `document` | `per_1k` |
+| `sentence_overlap` | `document` | `mean` |
+| `sentence_length_variance` | `document` | `sd` |
+| `paragraph_length_distribution` | `document` | `mean` |
+| `lexical_diversity` | `document` | `mtld` |
+| `content_word_ratio` | `document` | `ratio` |
+| `given_new_ordering` | `document` | `proportion` |
+| `referential_density` | `document` | `per_1k`, `mean_antecedent_distance` |
+| `mean_concreteness` | `document` | `mean` |
+| `novelty_rate` | `document` | `per_sentence` |
+<!-- /surface:metrics -->
+
+Novelty rate is the average number of new content lemmas per sentence, and it names the three lowest paragraphs by line.
 
 The example rules in `examples/metrics.yml` turn three of them into band checks through the generic `metric_band` function.
 
@@ -129,8 +157,6 @@ clarity trend draft.md --rule corporate-tier-a              # the habit across s
 
 `clarity mcp` serves over STDIO. Logs go to stderr.
 
-Checking tools: `check_text(text, config?)`, `score_text(text)`, `list_rules()`, `accept_finding(finding_id)`.
-
 Client config:
 
 ```json
@@ -151,21 +177,29 @@ An AI client can build a rule pack from one folder of good writing and one folde
 Prompts, run from the client, for example `/mcp__clarity__bootstrap_rules <good> <bad>`:
 
 - `bootstrap_rules(good_corpus_path, bad_corpus_path, focus?)` measures both folders, ranks candidate n-grams, drafts and tests rules, discards those under 3.0, shows the survivors and writes the ones you accept.
+- `bootstrap_composites(good_corpus_path, bad_corpus_path)` finds rule co-occurrences. It proposes a composite only when its ratio beats every member's.
 - `bootstrap_fixtures(rule_id)` builds fixtures from real hits in your corpora and writes them.
 - `tune_rule(rule_id)` sweeps a numeric threshold and recommends a value with the measured tradeoff.
 
-Tools: `corpus_stats`, `suggest_rules`, `test_rule`, `find_matches`, `validate_fixtures`, `get_rule`, `write_rules`, `write_fixtures`.
+Every prompt tells the client to read `clarity://surface` first. It lists every field, enum, condition, metric and structural function a rule can use, so a draft uses what exists and the loader accepts it.
+
+The full MCP surface, generated from the server (`clarity surface --mcp`):
+
+<!-- surface:mcp -->
+- **Tools:** `check_text`, `score_text`, `list_rules`, `accept_finding`, `corpus_stats`, `suggest_rules`, `test_rule`, `find_matches`, `get_rule`, `get_metrics`, `build_baseline`, `measure_drift`, `test_composite`, `validate_fixtures`, `write_rules`, `write_fixtures`
+- **Prompts:** `bootstrap_rules`, `bootstrap_composites`, `bootstrap_fixtures`, `tune_rule`
+- **Resources:** `clarity://baselines`, `clarity://baselines/{name}`, `clarity://categories`, `clarity://config/resolved`, `clarity://guide/authoring`, `clarity://guide/calibration`, `clarity://metrics/schema`, `clarity://profiles`, `clarity://rules`, `clarity://rules/{rule_id}`, `clarity://schema/composite`, `clarity://schema/fixture`, `clarity://schema/rule`, `clarity://surface`
+<!-- /surface:mcp -->
 
 - A corpus under 10 documents or 5,000 words produces no ratio. Under 25 documents or 20,000 words, ratios are marked provisional.
 - `write_rules` and `write_fixtures` need `user_approved: true`. The client may set it only after showing you the exact content.
 - Writes go to the project `.clarity/rules/` folder. `target: user` writes to the user directory instead.
 - Written rules start `experimental` (reported, unscored) until `write_fixtures` succeeds for them.
 
-Resources: `clarity://config/resolved`, `clarity://rules`, `clarity://rules/{id}`, `clarity://categories`, `clarity://profiles`, `clarity://schema/rule`, `clarity://schema/fixture`, `clarity://guide/authoring`, `clarity://guide/calibration`.
 
 ## Configuration
 
-`clarity.yml` in this repository is the complete set of bundled rules: every category weight and cap, every rule and its allowance. Pass `--config` with a file that holds only your changes. Rules merge by `id`. An existing id overrides the fields you set, a new id adds a rule, and `disabled: true` removes one.
+`clarity.yml` in this repository is the complete set of bundled rules: every category weight and cap, every rule and its allowance. Pass `--config` with a file that holds only your changes. Rules merge by `id`. An existing id overrides the fields you set, a new id adds a rule, and `enabled: false` removes one. `disabled: true` is accepted as the same thing.
 
 ```yaml
 readability:
@@ -174,7 +208,7 @@ readability:
 
 rules:
   - {id: intensifier, max_per_1k: 3}
-  - {id: hedge, disabled: true}
+  - {id: hedge, enabled: false}
 ```
 
 ### Watchlist
@@ -300,18 +334,84 @@ rules:
       - rule: intensifier
 ```
 
+The condition forms:
+
+<!-- surface:conditions -->
+- `metric`: {metric, op, value, key?} where op is one of lt, lte, gt, gte, eq. key picks a scalar of the metric; the default is its first tracked scalar.
+- `near`: suppress_if: {pos | lemma | ent | pattern, within: N} tests tokens near the match.
+- `in_scope`: suppress_if: {count_scope, rule} holds when another rule matches in that scope.
+- `over_allowance`: allowance_when: {over_allowance: category, <allowance field>} tightens a rule when another category is over its allowance.
+- `requires`: composite members are {rule, min_count?}; one level, no composite members.
+<!-- /surface:conditions -->
+
 Composites run once, after every atomic rule, and cannot name other composites. `clarity explain <rule> "text"` shows each member's state and the suppression condition that fired. The schema is in `src/clarity/guides/schema-composite.md`.
 
 ## Recommended examples
 
-`src/clarity/examples/` holds rules that are off by default: `redundancy.yml` (two lexical rules that are noisy), `metrics.yml` (three metric band checks) and `composition.yml` (two composites) and `explanation.yml` (one rule for runs of definitions, which does not separate human from GPT essays). To turn a set on, copy its `.yml` and `.test.yml` files into `.clarity/rules/` (project) or `~/.clarity/rules/` (user). `clarity init` writes them to `examples/` in the user directory, where they stay off until copied. Once they are in `rules/`, `clarity test` runs their fixtures.
+`src/clarity/examples/` holds rules that are off by default: `redundancy.yml` (two lexical rules that are noisy), `metrics.yml` (three metric band checks), `composition.yml` (two composites) and `explanation.yml` (one rule for runs of definitions, which does not separate human from GPT essays). To turn a set on, copy its `.yml` and `.test.yml` files into `.clarity/rules/` (project) or `~/.clarity/rules/` (user). `clarity init` writes them to `examples/` in the user directory, where they stay off until copied. Once they are in `rules/`, `clarity test` runs their fixtures.
 
 - `sentence-restatement` flags a sentence whose content lemmas mostly repeat one of the previous two. Each lemma is weighted by how rare it is across paragraphs. The second sentence must be shorter, so parallel structure and sentences that develop a point stay silent. It misses restatement in different words.
-- `redundant-closer` flags a paragraph's last sentence when it has 15 words or fewer and adds 3 or fewer content lemmas the paragraph has not used. It skips one-sentence paragraphs, closers that end in a colon, closers whose subject is a new noun, and closers whose new words lead into the next paragraph. It still flags some legitimate short closers. Run corpus mode on good writing before you trust it.
+- `redundant-closer` flags a paragraph's last sentence when it has 15 words or fewer and adds 3 or fewer content lemmas the paragraph has not used. It skips one-sentence paragraphs, closers that end in a colon, closers whose subject is a new noun, and closers whose new words lead into the next paragraph. Its default of 3 new lemmas comes from the target sentence, which adds 3 under spaCy (an earlier draft said 2). It did not come from corpus calibration, and on 40 human and 40 GPT essays it shows no signal (0.3x). It still flags some legitimate short closers, so run corpus mode on good writing before you trust it.
 
 ## Adding rules
 
-A rule needs `id` and `category` (a number or slug such as `hedges`; see `clarity://categories` or `clarity rules`). Everything else has a default. Pick a backend.
+A rule needs `id`, `category` (a number or slug such as `hedges`) and whatever its backend matches on. The loader rejects a rule without it, naming the rule and the missing field:
+
+- `phrase`: `phrases`, `lower_phrases` or `pattern`.
+- `dependency`: `patterns`. `anchor` is optional.
+- `structural`: `function`, one of the registered functions below.
+- `composite`: `requires_all` or `requires_any`.
+
+Every other field has a default. These are all the fields, generated from the schema (`clarity surface --fields`):
+
+<!-- surface:fields -->
+| Field | Backend | Default | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | common | required | always | unique slug |
+| `category` | common | required | always | a category id or number (see categories) |
+| `backend` | common | phrase |  | how the rule matches |
+| `severity` | common | warning |  | weight of a finding |
+| `confidence` | common | exact |  | exact is a deterministic match; inferred rests on a heuristic |
+| `max_per_1k` | common | none |  | allowed matches per 1,000 words; only at count_scope document |
+| `max_per_scope` | common | none |  | allowed matches per unit; at every other count_scope |
+| `count_scope` | common | document |  | the unit the allowance is counted in |
+| `position` | common | anywhere |  | where a match must sit to count |
+| `message` | common |  |  | text shown with each finding |
+| `suggestion` | common | none |  | replacement wording shown with the finding |
+| `phrases` | phrase | empty | phrase: one of these | words or phrases, matched on lemmas unless match is lower |
+| `lower_phrases` | phrase | empty | phrase: one of these | phrases matched on case-folded surface text |
+| `pattern` | phrase | none | phrase: one of these | a spaCy Matcher token pattern |
+| `match` | phrase | lemma |  | lemma or lower, for phrases |
+| `patterns` | dependency | empty | dependency: yes | spaCy DependencyMatcher patterns |
+| `anchor` | dependency | none |  | the pattern node a finding spans |
+| `concreteness_max` | dependency | none |  | fire only when the governed noun rates below this (1 to 5) |
+| `suppress_if` | common | empty |  | conditions that drop a match; it uses no allowance |
+| `active_when` | common | none |  | metric conditions that must hold for the rule to apply |
+| `allowance_when` | common | empty |  | allowances that replace the default when a condition holds |
+| `requires_all` | composite | empty |  | composite: every member must have a finding in the scope |
+| `requires_any` | composite | empty |  | composite: at least one member must have a finding in the scope |
+| `requires_none` | composite | empty |  | composite: no member may have a finding in the scope |
+| `note` | composite |  |  | composite: text added to the finding |
+| `next_lemma` | dependency | empty |  | the match must be followed by one of these lemmas |
+| `experimental` | common | False |  | report findings but leave them out of the score; skips the fixture rule |
+| `fixtures_exempt` | common | False |  | skip the fixture rule (generated rules only) |
+| `function` | structural | none | structural: yes | a registered structural function (see functions) |
+| `params` | structural | empty |  | values the structural function reads |
+<!-- /surface:fields -->
+
+The values each enum field accepts:
+
+<!-- surface:enums -->
+- `backend`: `phrase`, `dependency`, `structural`, `composite`
+- `count_scope`: `document`, `section`, `paragraph`, `sentence`, `clause`
+- `position`: `anywhere`, `sentence-initial`, `clause-initial`, `sentence-final`, `paragraph-final`, `section-final`
+- `severity`: `info`, `warning`, `error`
+- `confidence`: `exact`, `inferred`
+- `match`: `lemma`, `lower`
+- `op`: `lt`, `lte`, `gt`, `gte`, `eq`
+<!-- /surface:enums -->
+
+Pick a backend.
 
 Phrase, the default. It uses a spaCy `Matcher` over lemmas, or over surface forms with `match: lower`:
 
@@ -343,17 +443,60 @@ rules:
     concreteness_max: 3.0
 ```
 
-Structural. Write a Python function and register it in `src/clarity/matchers/structural.py`. Reference it with `backend: structural` and `function:`, and put tunable values under `params:`.
+Structural. Write a Python function and register it in `src/clarity/matchers/structural.py`. Reference it with `backend: structural` and `function:`, and put tunable values under `params:`. The registered functions:
+
+<!-- surface:functions -->
+- `adjective_density`: 
+- `adverb_propped_verb`: 
+- `clause_overload`: Finite clauses per sentence, from the shared clause utility, when commas are present.
+- `comma_splice`: 
+- `compound_chain`: Runs of noun modifiers: 'quality score threshold'.
+- `consecutive_fragments`: 
+- `definition_chain`: A paragraph that is mostly a run of definitions, which reads as a glossary and not as
+- `em_dash`: 
+- `escalation_window`: 'not' + just/only within a few tokens, then a pivot (but, it, a comma) within the window.
+- `expletive_construction`: 
+- `figurative_cost`: 'cost' used as a figurative verb ('costs score', 'cost us credibility').
+- `function_word_ratio`: 
+- `hedge_stacking`: Hedges per clause. Every hedge in a clause holding min_count or more is reported.
+- `intro_transition_comma`: 
+- `it_depends_final`: 
+- `long_sentence`: 
+- `lowercase_after_terminal`: 
+- `metric_band`: Fire when a registered metric crosses a threshold.
+- `nested_prep_depth`: Sentences stacking prepositional phrases: of the X of the Y from the Z.
+- `nominalization`: A -tion/-ment/-ance/-ence/-ity/-ness noun with a verb form, in the wordy shapes only.
+- `passive_agentless`: nsubjpass plus auxpass with no 'by' phrase: the actor is missing.
+- `passive_with_agent`: nsubjpass plus auxpass with a 'by' phrase: the actor is named but placed last.
+- `question_answer`: 
+- `rare_punctuation_context`: 
+- `redundant_closer`: A short last sentence that adds few content lemmas the paragraph has not already used.
+- `repeated_ngram`: A phrase the writer leans on: 3+ occurrences, spaced apart, with no proper nouns.
+- `rule_of_three`: 
+- `run_on_missing_comma`: 
+- `section_restatement`: 
+- `sentence_length_variance`: 
+- `sentence_restatement`: A sentence whose content lemmas mostly repeat one of the preceding sentences.
+- `stacked_adjectives`: Runs of adjectives (commas and conjunctions allowed between) before a noun.
+- `subj_verb_gap`: The reader holds the subject open while a long interruption passes.
+- `syllables_per_word`: 
+- `two_neg_in_clause`: 
+<!-- /surface:functions -->
 
 ## Development
 
 ```sh
 make test    # pytest and fixtures in the dev image
 make lint    # ruff, mypy and jscpd duplicate detection
+make docs    # rewrite the README tables that are rendered from the schema
 make run ARGS="rules --category 4"
 ```
 
-Categories: 1 significance, 2 discovery, 3 escalation, 4 intensifiers, 5 filler, 6 corporate, 7 structural, 8 hedges, 9 false balance, 10 false agency, 11 verbosity, 12 sentence flow, 13 watchlist, 14 self-framing, 15 construction, 16 redundancy, 17 prose metrics, 18 composite.
+Categories:
+
+<!-- surface:categories -->
+1 significance-asserting, 2 discovery-narration, 3 escalation, 4 intensifiers, 5 filler-transitions, 6 corporate-vocabulary, 7 structural-tics, 8 hedges, 9 false-balance, 10 false-agency, 11 verbosity, 12 sentence-flow, 13 watchlist, 14 self-framing, 15 construction, 16 redundancy, 17 prose-metrics, 18 composite
+<!-- /surface:categories -->
 
 Data: word ratings come from Brysbaert, Warriner and Kuperman (2014). The punctuation-context model is built from the Brown corpus.
 
