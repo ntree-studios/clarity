@@ -1,0 +1,51 @@
+{
+  "schema_version": "2026.08.25",
+  "meta": {
+    "name": "clarity",
+    "version": "1.0.0",
+    "description": "Clarity MCP server: a deterministic prose linter for AI-slop writing tics. Builds the clarity Docker image on first use and registers the STDIO server for the session.",
+    "platforms": ["linux", "darwin"],
+    "tags": ["writing", "linter", "prose", "mcp"]
+  },
+  "bootstrap": {
+    "os": [
+      {
+        "name": "linux",
+        "scripts": [
+          {
+            "name": "clarity-image",
+            "run": "set -e\ncommand -v docker >/dev/null 2>&1 || { echo 'clarity: Docker is required and was not found on PATH.' >&2; exit 1; }\ndocker info >/dev/null 2>&1 || { echo 'clarity: the Docker daemon is not running.' >&2; exit 1; }\nif docker image inspect clarity >/dev/null 2>&1; then\n  echo 'clarity: image already present'\n  exit 0\nfi\ndocker build -t clarity https://github.com/ntree-studios/clarity.git#main\n"
+          }
+        ]
+      },
+      {
+        "name": "darwin",
+        "scripts": [
+          {
+            "name": "clarity-image",
+            "run": "set -e\ncommand -v docker >/dev/null 2>&1 || { echo 'clarity: Docker is required and was not found on PATH. Install Docker Desktop and rerun.' >&2; exit 1; }\ndocker info >/dev/null 2>&1 || { echo 'clarity: the Docker daemon is not running. Start Docker Desktop and rerun.' >&2; exit 1; }\nif docker image inspect clarity >/dev/null 2>&1; then\n  echo 'clarity: image already present'\n  exit 0\nfi\ndocker build -t clarity https://github.com/ntree-studios/clarity.git#main\n"
+          }
+        ]
+      }
+    ]
+  },
+  "mcp_servers": [
+    {
+      "name": "clarity",
+      "description": "Prose linter for AI-slop writing tics (check, score, rule bootstrapping)",
+      "transport": "stdio",
+      "command": "sh",
+      "args": [
+        "-c",
+        "exec docker run -i --rm --network none -v \"$PWD:$PWD\" -w \"$PWD\" clarity mcp"
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "name": "use-clarity",
+      "description": "Run prose through the clarity MCP before delivering it",
+      "content": "# Use Clarity for Prose\n\nBefore delivering prose (docs, READMEs, posts, emails, commit and PR text), run it through the `clarity` MCP server with `check_text`. Fix every finding marked exact and over its allowance, then re-check. Do not report prose as clean without a passing `check_text` result.\n"
+    }
+  ]
+}
