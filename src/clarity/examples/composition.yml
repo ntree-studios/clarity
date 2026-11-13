@@ -1,0 +1,26 @@
+# Recommended example composites. Not part of the default pack: copy this file and
+# composition.test.yml into .clarity/rules/ to turn them on. A composite reads the findings of
+# other rules in one scope, so one compound tell is one finding with the members as children.
+rules:
+  - id: hedged-intensifier
+    category: composite
+    backend: composite
+    count_scope: sentence
+    max_per_scope: 0
+    severity: error
+    confidence: exact
+    requires_all:
+      - rule: hedge
+      - rule: intensifier
+    note: hedging and intensifying in one sentence cancel each other out
+  - id: filler-plus-significance
+    category: composite
+    backend: composite
+    count_scope: paragraph
+    max_per_scope: 0
+    severity: warning
+    confidence: exact
+    requires_all:
+      - rule: filler-transition
+      - rule: sig-noun-phrase
+    note: filler and a stated significance in one paragraph

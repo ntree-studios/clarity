@@ -1,0 +1,25 @@
+# Fixtures for the example rules in redundancy.yml.
+"rule": "sentence-restatement"
+"should_fire":
+- "The loader reads every rule from the project folder. The loader reads every project rule."
+- "Rules live in config, so each rule file is plain text. Each rule file is plain text."
+"should_not_fire":
+- "Docker gives you a reproducible image. The image ships with the spaCy model preinstalled."
+- "Set the allowance to zero for em dashes. Set the allowance to two for hedges."
+- "Rules are written by hand. Nothing in the system discovers them."
+- "The cache stores hot keys. Eviction removes stale entries after an hour."
+- "The loader reads every project rule. The loader reads every rule from the project folder."
+---
+"rule": "redundant-closer"
+"should_fire":
+- "The spaCy model, NLTK corpora, concreteness norms and the Brown punctuation model are baked into the image. Nothing touches the network at runtime."
+- "Every pattern, threshold, and weight is written by hand into the config by you. The engine only matches and counts. Nothing in the system discovers anything."
+- "Config resolution walks up from the input file to the filesystem root, stopping at the first .clarity directory it finds. This means the nearest config wins."
+"should_not_fire":
+- "The animacy predicate checks NER labels, then WordNet hypernyms, then a pronoun list. Subjects failing all three fire the rule. Profiles are configured separately."
+- "Build the clause segmenter once."
+- "The corpus ratio test is the most useful number the harness produces. Run it against writing you already consider good."
+- "The cache stores hot keys and evicts old ones. Latency drops sharply under load."
+- "The loader reads every rule from the project folder. Next, the profiles.\n\nProfiles change allowances and weights."
+- "A rule needs an id, a category and a severity. Pick a backend:\n\nPhrase is the default."
+---

@@ -9,7 +9,7 @@ from spacy.matcher import Matcher
 from spacy.tokens import Doc
 
 from clarity.config import Rule
-from clarity.matchers.common import CharSpan, clause_initial, dedupe, token_span
+from clarity.matchers.common import CharSpan, dedupe, token_span
 from clarity.nlp import concreteness_of
 
 
@@ -31,6 +31,8 @@ def build_matcher(nlp: Language, rule: Rule) -> Matcher:
         matcher.add(rule.id, [rule.pattern])
 
     patterns = [compile_phrase(nlp, p, rule.match) for p in rule.phrases]
+    # Hyphenated and capitalized fixed phrases lemmatize differently alone and in context.
+    patterns += [compile_phrase(nlp, p, "lower") for p in rule.lower_phrases]
 
     if patterns:
         matcher.add(rule.id, patterns)
@@ -72,8 +74,10 @@ def run(doc: Doc, rule: Rule, nlp: Language, matcher: Matcher) -> list[CharSpan]
     spans: list[CharSpan] = []
 
     for _, start, end in matcher(doc):
-        if rule.clause_initial and not clause_initial(doc, start):
-            continue
+        if rule.next_lemma and not (
+            end < len(doc) and doc[end].lemma_.lower() in rule.next_lemma
+        ):
+            continue  # the announcing use is a subject followed by its verb
 
         if rule.concreteness_max is not None and not _abstract_governor(
             doc, start, end, rule.concreteness_max

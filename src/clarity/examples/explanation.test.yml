@@ -1,0 +1,9 @@
+# Fixtures for the example rule in explanation.yml.
+"rule": "definition-chain"
+"should_fire":
+- "A queue is a list that serves items in order. A stack is a list that serves the newest item first. A heap is a tree that serves the smallest item first."
+"should_not_fire":
+- "A queue is a list that serves items in order. Most programs use one. They are simple to build."
+- "A cat is an animal.\n\nA dog is an animal.\n\nA cow is an animal."
+- "The build is green. The tests are fast. The release is ready."
+---

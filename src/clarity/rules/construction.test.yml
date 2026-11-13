@@ -1,0 +1,61 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "passive-agentless"
+"should_fire":
+- "The build was broken."
+"should_not_fire":
+- "The build was broken by the team."
+- "The team broke the build."
+- "She wrote the report."
+---
+"rule": "passive-with-agent"
+"should_fire":
+- "The build was broken by the team."
+"should_not_fire":
+- "The team broke the build."
+- "She wrote the report."
+---
+"rule": "adverb-propped-verb"
+"should_fire":
+- "He walked slowly to the door."
+"should_not_fire":
+- "He sprinted to the door."
+- "He strode to the door."
+- "She whispered the answer."
+---
+"rule": "noun-stacking"
+"should_fire":
+- "The quality score threshold failed."
+"should_not_fire":
+- "The score threshold failed."
+- "The score failed."
+---
+"rule": "preposition-chain"
+"should_fire":
+- "The report on the results of the analysis of the data from the survey failed."
+"should_not_fire":
+- "The report on the results failed."
+- "He lives in a house by the lake."
+---
+"rule": "subject-verb-distance"
+"should_fire":
+- "The engineer who wrote the original proof of concept for the old billing system left."
+"should_not_fire":
+- "The engineer left."
+- "The old engineer left early."
+---
+"rule": "weasel-attribution"
+"should_fire":
+- "Studies show that tests help."
+"should_not_fire":
+- "Studies show, according to Harvard, that tests help."
+- "A 2019 study by Harvard shows that tests help."
+- "Maria Chen says tests help."
+---
+"rule": "double-negation"
+"should_fire":
+- "We can't not ship it."
+"should_not_fire":
+- "We can't ship it."
+- "We can ship it."
+- "She did not leave."
+---

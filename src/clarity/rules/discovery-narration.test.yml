@@ -1,0 +1,15 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "discovery-narration"
+"should_fire":
+- "Funnily enough, the build passed. It turned out the server was down."
+- "Turns out the server was down."
+- "It turned out nobody had checked."
+- "As it happens, we already had a fix."
+- "Funnily enough, the bug was in the test."
+- "Oddly enough, nothing broke."
+- "Somehow, the build passed."
+- "It turns out that teams adopt early."
+"should_not_fire":
+- "She somehow found the keys."
+- "He turned to the window and watched the rain."
+- "The report arrived on Friday."

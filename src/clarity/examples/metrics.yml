@@ -1,0 +1,41 @@
+# Recommended example rules backed by prose metrics. Not part of the default pack: copy this file
+# and metrics.test.yml into .clarity/rules/ to turn them on. Each reads a registered metric
+# through metric_band; the thresholds are guesses until calibrated against your own writing.
+rules:
+  - id: sentence-type-imbalance
+    category: prose-metrics
+    backend: structural
+    function: metric_band
+    max_per_1k: 0
+    severity: info
+    confidence: exact
+    message: One sentence type makes up most of the text.
+    params:
+      metric: sentence_type_distribution
+      key: max_share
+      gt: 0.70
+      requires: {key: sentences, gte: 8}
+  - id: monotone-openers
+    category: prose-metrics
+    backend: structural
+    function: metric_band
+    max_per_1k: 0
+    severity: info
+    confidence: exact
+    message: Most sentences open with the same word.
+    params:
+      metric: sentence_opener_distribution
+      key: distinct_share
+      lt: 0.30
+      requires: {key: sentences, gte: 8}
+  - id: list-parallelism
+    category: construction
+    backend: structural
+    function: metric_band
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: List items do not share a form.
+    params:
+      metric: list_parallelism
+      per_issue: true

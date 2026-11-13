@@ -24,3 +24,12 @@ def test_package_data_covers_the_concreteness_table():
 
 def test_root_clarity_yml_is_the_bundled_default():
     assert (ROOT / "clarity.yml").read_text() == (PACKAGE / "default.yml").read_text()
+
+
+def test_license_is_mit_for_n_tree_studios():
+    text = (ROOT / "LICENSE").read_text()
+    data = tomllib.loads((ROOT / "pyproject.toml").read_text())
+
+    assert text.startswith("MIT License")
+    assert "N-Tree Studios" in text
+    assert data["project"]["license"] == "MIT"

@@ -23,7 +23,11 @@ FROM python:3.12-slim AS runtime
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /opt/nltk_data /opt/nltk_data
 ENV PATH=/opt/venv/bin:$PATH \
+    CLARITY_HOME=/config \
     NLTK_DATA=/opt/nltk_data \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
+RUN clarity init
+LABEL org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.vendor="N-Tree Studios"
 ENTRYPOINT ["clarity"]

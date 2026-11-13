@@ -1,0 +1,27 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "sig-noun-phrase"
+"should_fire":
+- "The key point is that we shipped."
+- "The important part is that we shipped on time."
+- "The interesting thing is how little code it took."
+- "The key point was that nobody noticed."
+- "The crucial question is whether users care."
+- "A clever bit is that the cache warms itself."
+- "The useful answer is to measure first."
+"should_not_fire":
+- "The key opened the door."
+- "The key to the cabinet is on the hook."
+- "A real number is any value on the line."
+---
+"rule": "sig-frame"
+"should_fire":
+- "The real question is whether it works."
+- "The real question is whether anyone reads this."
+- "The short answer is yes."
+- "What matters here is throughput."
+- "The thing to understand is that latency compounds."
+- "What matters here is trust."
+"should_not_fire":
+- "The question was whether it works."
+- "What the committee decided was kept private."
+- "She asked what the answer to the riddle was."

@@ -5,7 +5,6 @@ from __future__ import annotations
 from spacy.tokens import Doc, Span
 
 CharSpan = tuple[int, int]
-CONJ = {"and", "but", "so", "yet", "or"}
 
 
 def token_span(doc: Doc, start: int, end: int) -> CharSpan:
@@ -13,20 +12,6 @@ def token_span(doc: Doc, start: int, end: int) -> CharSpan:
     last = doc[end - 1]
 
     return doc[start].idx, last.idx + len(last.text)
-
-
-def clause_initial(doc: Doc, start: int) -> bool:
-    i = start
-
-    while i > 0 and doc[i - 1].lower_ in CONJ:
-        i -= 1
-
-    if i == 0 or doc[i].is_sent_start:
-        return True
-
-    prev = doc[i - 1]
-
-    return prev.is_punct or prev.is_space
 
 
 def dedupe(spans: list[CharSpan]) -> list[CharSpan]:

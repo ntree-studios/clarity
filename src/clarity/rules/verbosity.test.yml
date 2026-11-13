@@ -1,0 +1,60 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "long-sentence"
+"should_fire":
+- "The team shipped the build after the long review because the lead wanted every test to pass before\
+  \ the release went out to the customers who had been waiting for the fix since the previous quarter\
+  \ when the original problem first appeared."
+"should_not_fire":
+- "The team shipped the build after the review. The lead wanted every test to pass."
+- "She waited."
+- "The team shipped the build after the review."
+---
+"rule": "nominalization"
+"should_fire":
+- "We made a determination about the implementation."
+- "We made a determination about the budget."
+- "The implementation of the policy failed."
+- "They came to an agreement quickly."
+"should_not_fire":
+- "The nation has a station."
+- "His gaze burned into me with an intensity that made it hard to breathe."
+- "Bob fell silent, mulling over my statement."
+- "His vacation days were few and far between."
+- "The sound of machinery in motion."
+- "She starts with a definition of racism."
+- "His gaze burned with an intensity."
+---
+"rule": "expletive-construction"
+"should_fire":
+- "There are many reasons for this."
+"should_not_fire":
+- "Many reasons exist."
+- "Cats sleep on the porch."
+---
+"rule": "function-word-ratio"
+"should_fire":
+- "Database cache invalidation strategies reduce latency considerably. Throughput improves. Engineers\
+  \ appreciate performance."
+"should_not_fire":
+- "The cache stores the keys and the server reads them from it."
+- "The dog chased the cat across the yard and under the old fence."
+---
+"rule": "syllables-per-word"
+"should_fire":
+- "Organizational responsibilities necessitate comprehensive documentation, particularly regarding administrative\
+  \ accountability mechanisms."
+"should_not_fire":
+- "The cat sat on the mat and ate a fish."
+- "We ran to the park and sat by the pond."
+---
+"rule": "sentence-length-variance"
+"should_fire":
+- "The cat sat down. The dog ran off. The bird flew by. The fish swam on. The cow ate hay. The pig dug\
+  \ in."
+"should_not_fire":
+- "The cat sat. After a long and winding afternoon the dog finally ran off toward the distant hills. Birds\
+  \ sing. The fish, which had waited all day for a quiet moment, swam. Cows eat. Pigs dig deep holes near\
+  \ the old fence every single morning."
+- "Short. A much longer sentence follows here with many words in a row to stretch it out. Tiny. Then another\
+  \ long one rolls on past the first with even more words than before. Okay. Done and dusted for the day."
+---

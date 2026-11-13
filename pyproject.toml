@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,6 +7,9 @@ name = "clarity"
 version = "0.1.0"
 description = "Deterministic prose linter for AI-slop writing tics"
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "N-Tree Studios" }]
 dependencies = [
   "spacy>=3.7,<4",
   "mcp>=1.2",
@@ -24,7 +27,7 @@ clarity = "clarity.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-clarity = ["*.yml", "data/*"]
+clarity = ["*.yml", "data/*", "profiles/*.yml", "rules/*.yml", "examples/*.yml", "guides/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

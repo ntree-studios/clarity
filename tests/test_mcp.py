@@ -10,13 +10,15 @@ EM = "—"
 
 
 class Session:
-    def __init__(self):
+    def __init__(self, cwd=None, env=None):
         self.proc = subprocess.Popen(
             [sys.executable, "-m", "clarity.cli", "mcp"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            cwd=cwd,
+            env=env,
         )
         self.frames: list[dict] = []
         self.raw_stdout: list[str] = []
@@ -64,9 +66,8 @@ class Session:
         self.proc.wait(timeout=10)
 
 
-@pytest.fixture
-def session():
-    s = Session()
+def start(cwd=None, env=None):
+    s = Session(cwd, env)
     init = s.call(
         "initialize",
         {
@@ -77,6 +78,13 @@ def session():
     )
     assert "result" in init, init
     s.send("notifications/initialized", notify=True)
+
+    return s
+
+
+@pytest.fixture
+def session():
+    s = start()
 
     yield s
 
@@ -92,10 +100,12 @@ def payload(result):
     return json.loads(result["content"][0]["text"])
 
 
-def test_exactly_three_tools_are_listed(session):
-    tools = session.call("tools/list")["result"]["tools"]
+def test_the_checking_tools_are_listed_beside_the_bootstrap_tools(session):
+    names = {t["name"] for t in session.call("tools/list")["result"]["tools"]}
 
-    assert sorted(t["name"] for t in tools) == ["check_text", "list_rules", "score_text"]
+    assert {"check_text", "list_rules", "score_text", "accept_finding"} <= names
+    assert {"corpus_stats", "suggest_rules", "test_rule", "find_matches", "get_rule",
+            "validate_fixtures", "write_rules", "write_fixtures"} <= names  # fmt: skip
 
 
 def test_check_text_returns_findings_and_score(session):
@@ -123,7 +133,7 @@ def test_check_text_bad_config_is_a_tool_error_not_a_crash(session):
 
 
 def test_score_text_returns_a_score(session):
-    data = payload(session.tool("score_text", {"text": "The build passed. We shipped it."}))
+    data = payload(session.tool("score_text", {"text": "The build passed on the first run."}))
 
     assert data["score"] == 100
 
@@ -142,3 +152,10 @@ def test_stdout_carries_only_json_rpc_frames_and_logs_go_to_stderr(session):
     assert session.raw_stdout
     assert all(f.get("jsonrpc") == "2.0" for f in session.frames)
     assert all(line.lstrip().startswith("{") for line in session.raw_stdout)
+
+
+def test_oversize_text_is_a_tool_error_not_a_crash(session):
+    result = session.tool("check_text", {"text": "a. " * 400_000})
+
+    assert result["isError"] is True
+    assert session.proc.poll() is None

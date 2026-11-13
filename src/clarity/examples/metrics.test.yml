@@ -1,0 +1,22 @@
+# Fixtures for the metric-backed example rules in metrics.yml.
+"rule": "sentence-type-imbalance"
+"should_fire":
+- "The cat sat. The dog ran. The bird flew. The fish swam. The cow slept. The pig ate. The hen laid. The fox hid."
+"should_not_fire":
+- "The cat sat. The dog ran. The bird flew."
+- "The cat sat while the dog ran. Because it rained, the bird stayed home. The fish swam, and the cow slept. The pig, which was hungry, ate. We hid. The hen laid an egg when the sun came up. Nobody moved, but everyone watched. After the storm passed, the fox left."
+---
+"rule": "monotone-openers"
+"should_fire":
+- "The cat sat. The dog ran. The bird flew. The fish swam. The cow slept. The pig ate. The hen laid. The fox hid."
+"should_not_fire":
+- "The cat sat. The dog ran. The bird flew."
+- "The cat sat. Then the dog ran. Because it rained, the bird stayed home. Fish swam. A cow slept. By noon the pig ate. Quietly, the hen laid an egg. Nobody saw the fox."
+---
+"rule": "list-parallelism"
+"should_fire":
+- "Steps:\n\n- Fix the bug\n- Fixing the docs\n- Tests\n"
+"should_not_fire":
+- "Steps:\n\n- Fix the bug\n- Update the docs\n- Run the tests\n"
+- "No list here, only prose."
+---

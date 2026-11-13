@@ -1,0 +1,26 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "intensifier"
+"should_fire":
+- "This is genuinely useful."
+- "We truly care about quality."
+- "It is deeply flawed."
+- "It really works."
+- "We actually measured it."
+- "Crucially, the tests passed."
+- "Notably, latency dropped."
+- "Importantly, nobody was hurt."
+- "It improved significantly."
+"should_not_fire":
+- "The deep river runs past the genuine article."
+- "She read the report twice."
+- "The genuine article arrived."
+---
+"rule": "intensifier-frame"
+"should_fire":
+- "Make no mistake, the build failed."
+- "Make no mistake, this matters."
+- "To be clear, we shipped."
+"should_not_fire":
+- "She made a mistake on the form."
+- "A mistake was made in the form."
+- "She will be clear of the harbor by noon."

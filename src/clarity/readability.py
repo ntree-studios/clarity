@@ -73,11 +73,12 @@ def report(doc: Doc, settings: dict[str, Any]) -> dict[str, Any]:
     low, high = settings["target_grade"]
     grade = sum(values[k] for k in GRADE_METRICS) / len(GRADE_METRICS)
     counted = document_counts(doc)["words"] > 0
+    band_on = float(settings.get("weight", 1.0)) != 0.0
 
     return {
         "metrics": {k: round(v, 2) for k, v in values.items()},
         "grade": round(grade, 2),
         "target_grade": [low, high],
-        "inside_band": bool(counted and low <= grade <= high),
-        "fail_outside_band": bool(settings.get("fail_outside_band", False)),
+        "inside_band": bool(counted and low <= grade <= high) if band_on else None,
+        "fail_outside_band": bool(settings.get("fail_outside_band", False)) and band_on,
     }

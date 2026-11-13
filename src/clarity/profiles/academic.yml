@@ -1,0 +1,13 @@
+# Starting point, not authority. This profile encodes an opinion: passive voice and
+# nominalization are normal in academic prose, and unnamed sources are never acceptable
+# because citations are expected. Edit it.
+name: academic
+description: Papers, theses, literature reviews
+
+rule_override:
+  - id: passive-agentless
+    max_per_1k: 8
+  - id: nominalization
+    max_per_1k: 12
+  - id: weasel-attribution
+    max_per_1k: 0

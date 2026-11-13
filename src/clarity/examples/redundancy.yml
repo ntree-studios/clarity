@@ -1,0 +1,26 @@
+# Recommended example rules. Not part of the default pack: copy this file and redundancy.test.yml
+# into .clarity/rules/ (project) or ~/.clarity/rules/ (user) to turn them on.
+#
+# Both are lexical and inferred, so expect false positives. Run `clarity test --corpus <path>`
+# against writing you consider good before trusting them, and see README "Recommended examples".
+rules:
+  - id: sentence-restatement
+    category: redundancy
+    backend: structural
+    function: sentence_restatement
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Restates the sentence before it. Keep one.
+    params: {jaccard: 0.5, idf_weighted: true, require_shorter_second: true, window: 2}
+  - id: redundant-closer
+    category: redundancy
+    backend: structural
+    function: redundant_closer
+    count_scope: paragraph
+    max_per_scope: 0
+    position: paragraph-final
+    severity: warning
+    confidence: inferred
+    message: Closing sentence adds little the paragraph has not already said.
+    params: {max_words: 15, max_new_content_lemmas: 3, skip_new_subject: true, skip_lead_in: true}

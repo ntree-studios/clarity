@@ -1,5 +1,6 @@
 import io
 import json
+import re
 
 import pytest
 
@@ -120,18 +121,18 @@ def test_no_color_env_disables_color_on_a_tty(monkeypatch):
 def test_text_groups_by_category_with_count_header_and_score_summary():
     _, out, _ = run(["check", "-"], stdin=f"{DIRTY} {DIRTY}")
 
-    assert "Sentence flow and punctuation" in out
-    assert "2 found · 0 allowed · over by 2" in out
-    assert "<stdin>:1:" in out
-    assert "Score:" in out
-    assert "Readability:" in out
+    assert "STRUCTURAL TICS" in out
+    assert "2 found \u00b7 0 allowed \u00b7 over by 2" in out
+    assert re.search(r"\d+:\d+ +He left", out)
+    assert "STYLE SCORE" in out
+    assert "READABILITY" in out
 
 
 def test_confidence_is_visible_and_filterable():
     text = "The architecture wants a single entry point."
     _, out, _ = run(["check", "-"], stdin=text)
 
-    assert "inferred" in out
+    assert "inferred" in out or "\u25d0" in out
 
     _, out, _ = run(["check", "-", "--format", "json", "--min-confidence", "exact"], stdin=text)
 

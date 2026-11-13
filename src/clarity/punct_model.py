@@ -30,7 +30,14 @@ SPACY_TO_UNIVERSAL = {
 }
 
 
-def to_universal(pos: str) -> str:
+def to_universal(pos: str, tag: str = "") -> str:
+    """spaCy UPOS (plus the fine tag) to the Brown universal tagset.
+
+    Brown tags verb particles ('off' in 'laughed it off') PRT; spaCy calls them ADP with tag RP.
+    """
+    if tag == "RP":
+        return "PRT"
+
     return SPACY_TO_UNIVERSAL.get(pos, pos)
 
 

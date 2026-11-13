@@ -35,12 +35,55 @@ def wordnet_animate(lemma: str) -> bool:
     return bool(lineage & _roots())
 
 
+def _acronym(token: Token) -> bool:
+    """API, SQL, CPU: capitalized tokens that name things, not people."""
+    return len(token.text) > 1 and token.text.isupper()
+
+
+def _looks_like_a_name(token: Token) -> bool:
+    """A capitalized singular noun with no determiner ('Pia had seen') is a name the tagger missed.
+
+    Common singular nouns need a determiner, so this separates names from 'Architecture wants'
+    only when a determiner is present; a bare capitalized sentence-initial noun is read as a name.
+    """
+    bare = not any(c.dep_ in {"det", "poss"} for c in token.children)
+
+    return token.tag_ == "NN" and token.text[:1].isupper() and bare and not _acronym(token)
+
+
+# Company and agency acronyms that WordNet does not know and that do act as agents.
+ORG_ACRONYMS = {
+    "ibm", "amd", "sap", "bbc", "cnn", "hp", "nsa", "cia", "irs", "epa", "fda", "nhs", "sec",
+    "dod", "dhs", "nbc", "abc", "cbs", "ups", "gm", "ge", "hsbc", "nyt", "mit", "ucla",
+}  # fmt: skip
+
+
+def _is_org_acronym(token: Token) -> bool:
+    """All-caps tokens are agents only when they are a known organization.
+
+    spaCy tags API, SQL and AWS as ORG, but they name things, not actors. An acronym passes when
+    WordNet resolves it to an animate lineage (FBI, NASA, NATO) or it is on the short allowlist.
+    """
+    word = token.text.lower()
+
+    return word in ORG_ACRONYMS or wordnet_animate(word)
+
+
 def is_animate(token: Token) -> bool:
-    """Ordered checks: NER label, WordNet hypernyms, animate pronoun. Otherwise inanimate."""
+    """Ordered checks: NER label, proper noun or animate pronoun, WordNet hypernyms."""
+    if _acronym(token):
+        return _is_org_acronym(token)
+
     if token.ent_type_ in ANIMATE_ENTS:
         return True
 
+    if token.lower_ in ANIMATE_PRONOUNS or (token.pos_ == "PROPN" and not _acronym(token)):
+        return True  # names the NER missed ("Pia"), and "No one wants"
+
     if token.pos_ == "PRON":
-        return token.lower_ in ANIMATE_PRONOUNS
+        return False
+
+    if _looks_like_a_name(token):
+        return True
 
     return wordnet_animate(token.lemma_.lower())

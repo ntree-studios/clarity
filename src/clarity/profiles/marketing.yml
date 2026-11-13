@@ -1,0 +1,12 @@
+# Starting point, not authority. This profile encodes an opinion: marketing copy gets no
+# corporate vocabulary or escalation, a tighter readability band, and looser hedging. Edit it.
+name: marketing
+description: Landing pages, launch posts, product copy
+
+allowance_multiplier:
+  corporate-vocabulary: 0
+  escalation: 0
+  hedges: 2.0
+
+readability:
+  target_grade: [7, 10]
