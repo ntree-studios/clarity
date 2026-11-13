@@ -1,0 +1,18 @@
+# Fixtures for the composites in composition.yml. Each has a case where both members are present
+# and cases where only one is.
+"rule": "hedged-intensifier"
+"should_fire":
+- "This is arguably a genuinely good plan."
+"should_not_fire":
+- "This is arguably a good plan."
+- "This is a genuinely good plan."
+- "This is arguably a good plan. The next one is genuinely good."
+---
+"rule": "filler-plus-significance"
+"should_fire":
+- "That said, we ship on Friday. The key part is the rollback."
+"should_not_fire":
+- "That said, we ship on Friday."
+- "The key part is the rollback."
+- "That said, we ship on Friday.\n\nThe key part is the rollback."
+---

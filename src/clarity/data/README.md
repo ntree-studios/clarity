@@ -1,0 +1,1 @@
+Concreteness ratings: Brysbaert, Warriner and Kuperman (2014), "Concreteness ratings for 40 thousand generally known English word lemmas", Behavior Research Methods 46, 904-911. Two columns: word, mean concreteness (1 abstract to 5 concrete). Unigrams only.

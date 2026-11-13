@@ -1,0 +1,66 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "intro-transition-comma"
+"should_fire":
+- "However the build failed."
+"should_not_fire":
+- "However hard he tried, he failed. However, the build passed."
+- "Therefore, we shipped."
+- "However hard he tried, he failed."
+---
+"rule": "lowercase-after-terminal"
+"should_fire":
+- "It ended. then he left."
+"should_not_fire":
+- "It ended. Then he left. See Dr. Smith, e.g. the dentist, at 3.5 miles."
+- "Mr. Smith left. Dr. Jones stayed."
+- "It ended. Then he left."
+---
+"rule": "run-on-missing-comma"
+"should_fire":
+- "The build failed and the team fixed it."
+"should_not_fire":
+- "She opened the door and walked in."
+- "The build failed, and the team fixed it."
+- "She sang and danced."
+---
+"rule": "comma-splice"
+"should_fire":
+- "The build failed, the team fixed it."
+"should_not_fire":
+- "The build failed, and the team fixed it."
+- "He said, the build failed."
+- "She believes, the release matters."
+- "\"The build failed,\" she said, \"the team fixed it.\""
+- "Once the build failed, the team fixed it."
+- "When the build failed, the team fixed it."
+- "If the build fails, the team fixes it."
+---
+"rule": "clause-overload"
+"should_fire":
+- "When the build failed, the lead said that the team, which had worked all night, wanted to fix it because\
+  \ they believed the release mattered."
+"should_not_fire":
+- "The build failed, so the team fixed it."
+- "He ran home."
+---
+"rule": "rare-punctuation-context"
+"should_fire":
+- "She went to the , store."
+"should_not_fire":
+- "She went to the store, then home."
+- "We ate bread, cheese, and fruit."
+---
+"rule": "adjective-density"
+"should_fire":
+- "The big bright red car and the quick shiny blue truck."
+"should_not_fire":
+- "The cache stores keys. The server reads data. A cold start costs time."
+- "The server reads data."
+- "A cold start costs time."
+---
+"rule": "adjective-stack"
+"should_fire":
+- "A big, bold, shiny car arrived."
+"should_not_fire":
+- "A big car arrived."
+- "The old red barn stood empty."

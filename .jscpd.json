@@ -1,0 +1,10 @@
+{
+  "path": ["src", "tests"],
+  "format": ["python"],
+  "minLines": 6,
+  "minTokens": 60,
+  "threshold": 0,
+  "reporters": ["console"],
+  "ignore": ["**/__pycache__/**", "**/*.egg-info/**"],
+  "gitignore": true
+}

@@ -1,0 +1,20 @@
+# Starting point, not authority. This profile encodes an opinion about technical writing:
+# passive voice is normal in runbooks and corporate vocabulary is less excusable. Edit it.
+name: technical
+description: API docs, runbooks, architecture notes
+
+allowance_multiplier:
+  construction: 1.5
+  corporate-vocabulary: 0.5
+  verbosity: 1.2
+
+weight_override:
+  readability: 0.0
+
+disable:
+  - section-restatement
+  - long-sentence
+
+rule_override:
+  - id: subject-verb-distance
+    max_tokens: 12

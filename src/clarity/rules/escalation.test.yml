@@ -1,0 +1,24 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "escalation-not-just"
+"should_fire":
+- "This is not just a bug, it is a design flaw."
+- "This is not just a tool, it's a platform."
+- "It isn't just about speed, but about trust."
+- "We are not only fast but also reliable."
+- "It's not just a bug; it's a design flaw."
+- "That wasn't just luck, it was planning."
+"should_not_fire":
+- "She did not just leave the keys on the table."
+- "He is not alone in the room."
+- "She did not leave the keys on the table."
+---
+"rule": "escalation-phrase"
+"should_fire":
+- "More than that, the build failed. And that is before you even consider the cost."
+- "More than that, the tool scales."
+- "And that's before you even consider the cost."
+- "This isn't just about code."
+"should_not_fire":
+- "We have more cats than dogs."
+- "More cats than dogs live on this street."
+- "We have more than enough chairs."

@@ -1,0 +1,13 @@
+# Starting point, not authority. This profile encodes an opinion: fragments, passive voice,
+# long sentences and uniform rhythm are legitimate devices in prose fiction. Edit it.
+name: fiction
+description: Stories, scenes, narrative essays
+
+weight_override:
+  readability: 0.0
+
+disable:
+  - long-sentence
+  - passive-agentless
+  - fragment-triad
+  - sentence-length-variance

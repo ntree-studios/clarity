@@ -1,0 +1,35 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "framing-noun-phrase"
+"should_fire":
+- "The honest answer is that nobody knows."
+"should_not_fire":
+- "The answer is that nobody knows. An honest mistake happened."
+- "The honest broker in the deal was the escrow agent."
+- "She gave a simple answer to a simple question."
+---
+"rule": "framing-adverbial"
+"should_fire":
+- "Honestly, the build failed."
+"should_not_fire":
+- "She spoke frankly about the build."
+- "She answered the question honestly."
+- "He spoke frankly about the build."
+---
+"rule": "framing-meta"
+"should_fire":
+- "In other words, the build failed."
+"should_not_fire":
+- "She described the build differently."
+- "The contract was void in other states."
+---
+"rule": "names-verb"
+"should_fire":
+- "The loader rejects the field and names the rule."
+- "Errors exit 2, naming the file and field."
+- "The report names the culprit."
+"should_not_fire":
+- "A man named Bob arrived."
+- "Pick a name for the rule."
+- "The names matter."
+- "Her name is Ana."
+---

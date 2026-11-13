@@ -1,0 +1,28 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "filler-worth-noting"
+"should_fire":
+- "It's worth noting that the build failed."
+- "It's worth noting that the cache is cold."
+- "It's worth mentioning the cost."
+- "Worth noting: the API changed."
+- "It is worth remembering that tests rot."
+"should_not_fire":
+- "The note was worth the cost."
+- "Nothing in the log is worth deleting."
+- "The note arrived with the package."
+---
+"rule": "filler-transition"
+"should_fire":
+- "That said, we proceed with the plan."
+- "That said, we should proceed."
+- "Ultimately, users decide."
+- "At the end of the day, the numbers hold."
+- "When it comes to speed, we win."
+- "In terms of cost, it is cheap."
+- "Here's the thing: nobody reads docs."
+- "The reality is that budgets are tight."
+- "In short, it works."
+"should_not_fire":
+- "He said that we proceed. We tracked cost in terms of dollars."
+- "We measured the load in short bursts."
+- "The road ends at the river."

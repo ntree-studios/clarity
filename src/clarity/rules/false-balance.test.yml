@@ -1,0 +1,24 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "false-balance-while"
+"should_fire":
+- "While speed matters, it is also true that safety matters."
+- "Although cost is high, it's also true that value is high."
+"should_not_fire":
+- "While the kettle boiled, she read."
+- "He waited while she finished."
+---
+"rule": "false-balance-phrase"
+"should_fire":
+- "There is no one-size-fits-all answer."
+- "There's no one-size-fits-all answer."
+- "No one-size-fits-all solution exists."
+"should_not_fire":
+- "One size fits this shoe."
+- "Sizes vary by brand."
+---
+"rule": "it-depends-conclusion"
+"should_fire":
+- "# Choice\n\nPick tools carefully. It depends."
+"should_not_fire":
+- "# Choice\n\nIt depends on load.\n\nWe measure it."
+- "# Plan\n\nIt depends on the budget. Then we pick tools."

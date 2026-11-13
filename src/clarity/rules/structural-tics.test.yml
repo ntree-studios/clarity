@@ -1,0 +1,61 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "rule-of-three"
+"should_fire":
+- "It is faster, cheaper, and more reliable."
+- "We need speed, scale, and safety."
+- "The plan is simple, clear, and bold."
+"should_not_fire":
+- "It is fast and cheap."
+- "Ana and Ben went home."
+- "The dog barked."
+---
+"rule": "fragment-triad"
+"should_fire":
+- "Not fast. Not cheap. Just broken."
+- "Not a patch. Not a rewrite. A rebuild."
+- "Fast. Cheap. Good."
+- "No meetings. No slides. Just code."
+"should_not_fire":
+- "The build failed. The team fixed it."
+- "Figure 1. Schematic representation of the used setup."
+- "Installation view, Brooklyn Museum, 2021. Detail of case 2."
+- "Figure 1. Schematic representation of the setup."
+---
+"rule": "question-then-answer"
+"should_fire":
+- "Why does the cache fail? The cache fails because of stale keys."
+- "Why does it matter? It matters because users care."
+- "What does that mean? It means the cache is stale."
+- "Why does the cache fail? The cache fails because keys go stale."
+"should_not_fire":
+- "Why does the cache fail? Keys expire early."
+- "Where did the train go? It left at noon for the coast."
+- "Why is the sky dark? Clouds covered the sun."
+---
+"rule": "x-rather-than-y"
+"should_fire":
+- "We chose speed rather than safety."
+- "Build tools rather than rules."
+"should_not_fire":
+- "She would rather leave than stay."
+- "He preferred tea to coffee."
+---
+"rule": "which-is-exactly"
+"should_fire":
+- "We cut scope, which is exactly the point."
+- "It is cheap, which is the point."
+"should_not_fire":
+- "Which is better?"
+- "Which route did you take?"
+- "He asked which one was exactly right."
+---
+"rule": "em-dash"
+"should_fire":
+- "He left — quickly."
+- "A fast tool — and a cheap one."
+- "Sales rose in 2021–2022."
+"should_not_fire":
+- "He left quickly, then returned late."
+- "Sales rose from 2021 to 2022."
+- "He left quickly, then returned."
+---

@@ -1,0 +1,16 @@
+# Recommended example rule. Not part of the default pack: copy this file and explanation.test.yml
+# into .clarity/rules/ to turn it on.
+#
+# Measured on 150 human and 150 GPT essays it fires more on the human writing (ratio 0.6), so it
+# does not separate the two. Use it only if your own corpus says it does: clarity test --corpus.
+rules:
+  - id: definition-chain
+    category: verbosity
+    backend: structural
+    function: definition_chain
+    count_scope: paragraph
+    max_per_scope: 0
+    severity: warning
+    confidence: inferred
+    message: A run of definitions reads as a glossary. Explain with an example.
+    params: {min_definitions: 3}

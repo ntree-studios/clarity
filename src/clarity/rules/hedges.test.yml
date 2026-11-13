@@ -1,0 +1,21 @@
+# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+"rule": "hedge"
+"should_fire":
+- "This can help to reduce cost."
+- "It may be able to scale."
+- "It is arguably the best."
+- "It is somewhat slow."
+- "It is one of the most used tools."
+"should_not_fire":
+- "This reduces cost."
+- "The result is exact."
+- "The cache holds ten keys."
+---
+"rule": "hedge-stacking"
+"should_fire":
+- "This is arguably somewhat useful."
+- "It may be able to arguably help."
+"should_not_fire":
+- "This is arguably useful. It is somewhat slow."
+- "This is arguably useful."
+- "It is somewhat slow."
