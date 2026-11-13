@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any, TextIO
 
-from clarity import baseline, config_cmds, harness
+from clarity import baseline, config_cmds, harness, surface
 from clarity.accept import accept, load_accepted
 from clarity.config import ConfigError, describe_rules
 from clarity.engine import SOURCE_STDIN, InputError, analyze
@@ -109,6 +109,16 @@ def _parser() -> argparse.ArgumentParser:
     tr.add_argument("--rule")
     tr.add_argument("--config")
     tr.add_argument("--profile")
+
+    sf = sub.add_parser("surface", help="everything a rule can address: fields, metrics, functions")
+    for name in surface.SECTIONS:
+        sf.add_argument(f"--{name}", action="store_true", help=f"only the {name} section")
+
+    sf.add_argument("--format", choices=["markdown", "json"], default="markdown")
+    sf.add_argument("--sync", metavar="FILE", help="rewrite the surface regions of a markdown file")
+    sf.add_argument("--check", action="store_true", help="with --sync: exit 1 if the file is stale")
+    sf.add_argument("--config")
+    sf.add_argument("--profile")
 
     sub.add_parser("mcp", help="serve MCP over stdio")
 
@@ -303,6 +313,26 @@ def _cmd_trend(args: argparse.Namespace, stdout: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_surface(args: argparse.Namespace, stdout: TextIO) -> int:
+    data = surface.build(_resolve(args).config)
+
+    if args.sync:
+        stale = surface.sync(Path(args.sync), data, write=not args.check)
+        stdout.write(("stale: " + ", ".join(stale) if stale else "up to date") + "\n")
+
+        return EXIT_FAIL if stale and args.check else EXIT_OK
+
+    chosen = tuple(n for n in surface.SECTIONS if getattr(args, n))
+
+    if args.format == "json":
+        shown = {n: data[n] for n in chosen or surface.SECTIONS}
+        stdout.write(json.dumps(shown, indent=2) + "\n")
+    else:
+        stdout.write(surface.markdown(data, chosen or surface.SECTIONS) + "\n")
+
+    return EXIT_OK
+
+
 def _cmd_rules(args: argparse.Namespace, stdout: TextIO) -> int:
     config = _resolve(args).config
 
@@ -379,6 +409,9 @@ def main(
 
         if args.command == "rules":
             return _cmd_rules(args, stdout)
+
+        if args.command == "surface":
+            return _cmd_surface(args, stdout)
 
         if args.command == "baseline":
             return _cmd_baseline(args, stdout)

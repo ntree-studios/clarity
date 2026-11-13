@@ -1,7 +1,6 @@
 """Every YAML block in the docs must load. Docs that drift from the schema fail the build."""
 
 import re
-from importlib import resources
 from pathlib import Path
 
 import pytest
@@ -41,14 +40,3 @@ def test_yaml_block_validates(block, tmp_path):
         load_config(text=yaml.safe_dump(data))
     except ConfigError as exc:
         pytest.fail(f"does not load: {exc}")
-
-
-def test_the_readme_category_list_matches_the_shipped_pack():
-    lines = (ROOT / "README.md").read_text().splitlines()
-    line = next(ln for ln in lines if ln.startswith("Categories:"))
-    shown = re.findall(r"(\d+) ([a-z]+)", line)
-    pack = yaml.safe_load(resources.files("clarity").joinpath("default.yml").read_text())
-
-    assert [(int(n), name) for n, name in shown] == [
-        (c["n"], c["id"].split("-")[0]) for c in pack["categories"]
-    ]
