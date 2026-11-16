@@ -10,7 +10,6 @@ from typing import Any
 
 from spacy.tokens import Doc
 
-from clarity.markdown import paragraph_ranges, prose_paragraphs
 from clarity.matchers.common import sentences
 from clarity.metrics import REGISTRY, Analysis, metric
 from clarity.nlp import concreteness_of
@@ -22,6 +21,7 @@ ANAPHORA = {"he", "she", "it", "they", "him", "her", "them", "his", "its", "thei
 MTLD_THRESHOLD = 0.72
 LOWEST_SHOWN = 3
 importlib.import_module("clarity.metrics_structure")  # registers the structure metrics
+importlib.import_module("clarity.records")  # registers topic_structure and the record sets
 
 
 def _round(value: float | None, places: int = 2) -> float | None:
@@ -41,14 +41,12 @@ def sentence_length_variance(doc: Doc, text: str) -> dict[str, Any]:
     }
 
 
-def paragraph_length_distribution(doc: Doc, text: str) -> dict[str, Any]:
+def paragraph_length_distribution(text: str, paragraphs: list[tuple[int, int]]) -> dict[str, Any]:
+    """Words per paragraph of text (titles, subtitles and items are not paragraphs)."""
     sizes = []
 
-    for start, end in paragraph_ranges(text):
-        body = "\n".join(
-            line for line in text[start:end].splitlines() if not line.lstrip().startswith("#")
-        )
-        count = len(re.findall(r"\w+", body))
+    for start, end in paragraphs:
+        count = len(re.findall(r"\w+", text[start:end]))
 
         if count:
             sizes.append(count)
@@ -159,8 +157,8 @@ def mean_concreteness(doc: Doc, text: str) -> dict[str, Any]:
     }
 
 
-def novelty_rate(doc: Doc, text: str) -> dict[str, Any]:
-    """New content lemmas per sentence, counted against what the paragraph already said.
+def novelty_rate(doc: Doc, text: str, paragraphs: list[tuple[int, int]]) -> dict[str, Any]:
+    """New content lemmas per sentence, counted against the words used earlier in the paragraph.
 
     The first sentence of a paragraph has nothing to be new against, so it is not scored.
     Diagnostic: the paragraphs with the lowest rate are named by line, without blaming a sentence.
@@ -168,7 +166,7 @@ def novelty_rate(doc: Doc, text: str) -> dict[str, Any]:
     sents = sentences(doc)
     rows: list[tuple[float, int, int]] = []
 
-    for start, end in prose_paragraphs(text):
+    for start, end in paragraphs:
         group = [s for s in sents if start <= s.start_char < end]
         seen = content_lemmas(group[0]) if group else set()
         added = []
@@ -194,13 +192,11 @@ def novelty_rate(doc: Doc, text: str) -> dict[str, Any]:
 
 LEGACY = {
     "sentence_length_variance": (sentence_length_variance, ("sd",)),
-    "paragraph_length_distribution": (paragraph_length_distribution, ("mean",)),
     "lexical_diversity": (lexical_diversity, ("mtld",)),
     "content_word_ratio": (content_word_ratio, ("ratio",)),
     "given_new_ordering": (given_new_ordering, ("proportion",)),
     "referential_density": (referential_density, ("per_1k", "mean_antecedent_distance")),
     "mean_concreteness": (mean_concreteness, ("mean",)),
-    "novelty_rate": (novelty_rate, ("per_sentence",)),
 }
 
 
@@ -212,6 +208,13 @@ def _register(
 
 for _name, (_fn, _scalars) in LEGACY.items():
     _register(_fn, _scalars, _name)
+
+metric("paragraph_length_distribution", scalars=("mean",))(
+    lambda a: paragraph_length_distribution(a.text, a.paragraphs)
+)
+metric("novelty_rate", scalars=("per_sentence",))(
+    lambda a: novelty_rate(a.doc, a.text, a.paragraphs)
+)
 
 
 def report(analysis: Analysis, settings: dict[str, Any]) -> dict[str, Any]:

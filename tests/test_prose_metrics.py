@@ -77,10 +77,9 @@ def test_sentence_length_variance_reports_mean_and_sd():
     assert m["sd"] == pytest.approx(1.63, abs=0.01)
 
 
-def test_paragraph_distribution_counts_blank_line_blocks_and_ignores_headings():
-    m = metrics("# Title\n\nOne two three.\n\nFour five six seven eight.\n")["metrics"][
-        "paragraph_length_distribution"
-    ]
+def test_paragraph_distribution_counts_text_paragraphs_and_skips_titles():
+    doc = {"title": "Title", "text": "One two three.\n\nFour five six seven eight.\n"}
+    m = metrics(doc)["metrics"]["paragraph_length_distribution"]
 
     assert m["count"] == 2
     assert (m["min"], m["max"]) == (3, 5)

@@ -1,0 +1,26 @@
+# Starting point, not authority. Argumentative and expository essays and articles: a thesis up
+# front, a topic sentence per paragraph, every paragraph serving the thesis. Every setting names
+# its source or says it is opinion. Sources are summarised in research_notes/AI slop and writing
+# rules/writing_technique.md and reports/AI slop and writing rules.md. Edit it.
+name: essay
+description: Argumentative and expository essays and articles
+
+# Staying on topic is measured against the title. Purdue OWL on unity: "The entire paragraph
+# should concern itself with a single focus"; Williams & Bizup: a coherent text has a findable
+# POINT. The title is the cheapest stated point. The bundled default is already the title; it is
+# set here so the profile still anchors on it if the default changes.
+topics:
+  anchor: title
+
+rule_override:
+  # generic-paragraph is scored in the bundled pack since calibration (docs/calibration.md: 0.09
+  # vs 2.24 per 1k on 250 human vs 250 AI student essays). Purdue OWL ("adequate development")
+  # and Strunk (a paragraph develops its topic sentence) are why it matters here: a warning.
+  - id: generic-paragraph
+    severity: warning
+  # An essay takes a position (thesis up front). Comparing both sides with no verdict is the
+  # failure; scoring it is opinion: on the student essays it fired too rarely to measure (0.04
+  # vs 0.03 per 1k, docs/calibration.md).
+  - id: comparison-no-verdict
+    experimental: false
+    severity: warning

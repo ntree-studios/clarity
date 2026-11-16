@@ -1,4 +1,4 @@
-# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+# Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
 "rule": "false-agency"
 "should_fire":
 - "The architecture wants a single entry point."
@@ -67,3 +67,46 @@
 "should_not_fire":
 - "The data suggest a clear trend."
 - "The dataset has three columns."
+---
+rule: abstract-physical-verb
+should_not_fire:
+  - "The load-bearing wall carries the roof."
+  - "The crane does the heavy lifting on site."
+  - "He does a lot of the work himself."
+  - "Load-Bearing Walls"
+should_fire:
+  - "This is the load-bearing assumption in the plan."
+  - "This sentence does the heavy lifting."
+  - "Every paragraph has to earn its place."
+---
+rule: abstract-physical-verb-catalogued
+should_not_fire:
+  - "She turned the garage into a studio."
+  - "The guard opened the gate."
+  - "Hold the button down for five seconds."
+  - "The bracket holds the shelf."
+  - "The variable holds the count."
+  - "The rope holds."
+  - "The plane landed at noon."
+  - "The config lives in the home folder."
+  - "She carries the weight of the box."
+should_fire:
+  - "The new process turns every complaint into a ticket."
+  - "The redesign opens new revenue for the store."
+  - "The delay holds the conversion rate down."
+  - "Each release earns the next."
+  - "The plan holds."
+  - "The joke lands hardest in the second act."
+  - "The risk lives in the gap between teams."
+  - "The argument carries weight."
+---
+rule: abstract-physical-verb-observed
+should_not_fire:
+  - "The cat sits in the box."
+  - "The key maps to a column."
+  - "She checks out books every week."
+  - "The statue stands."
+should_fire:
+  - "That tracks."
+  - "The math checks out."
+  - "This maps to our goals."

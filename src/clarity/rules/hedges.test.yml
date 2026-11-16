@@ -1,4 +1,4 @@
-# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+# Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
 "rule": "hedge"
 "should_fire":
 - "This can help to reduce cost."
@@ -19,3 +19,12 @@
 - "This is arguably useful. It is somewhat slow."
 - "This is arguably useful."
 - "It is somewhat slow."
+---
+rule: source-disclaimer
+should_not_fire:
+  - "The sources are listed at the end."
+  - "Information about the 1902 flood is in the county archive."
+  - "Available Sources"
+should_fire:
+  - "Her early life is not widely documented."
+  - "Based on the available information, the mill closed in 1910."

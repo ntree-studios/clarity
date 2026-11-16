@@ -12,13 +12,6 @@ from clarity.accept import is_accepted
 from clarity.clauses import clauses
 from clarity.config import Config, Rule, load_config
 from clarity.ids import finding_id
-from clarity.markdown import (
-    has_headings,
-    mask_code_blocks,
-    mask_markup,
-    prose_paragraphs,
-    section_ranges,
-)
 from clarity.matchers import dependency, phrase, structural
 from clarity.matchers.common import CharSpan, sentences
 from clarity.metrics import Analysis
@@ -27,6 +20,7 @@ from clarity.positions import Units
 from clarity.prose_metrics import report as prose_metrics_report
 from clarity.readability import report as readability_report
 from clarity.scoring import category_result, rule_over, score_document
+from clarity.structure import Structure, coerce, parse_doc
 
 SOURCE_STDIN = "<stdin>"
 MAX_CHARS = 1_000_000
@@ -35,10 +29,6 @@ MAX_CHARS = 1_000_000
 class InputError(ValueError):
     """Raised when the input cannot be analyzed, for example because it is too large."""
 CONTEXT_LIMIT = 240
-
-
-def _count_words(doc: Doc) -> int:
-    return sum(1 for t in doc if not t.is_punct and not t.is_space)
 
 
 def _rule_hits(doc: Doc, rule: Rule, ctx: structural.Context) -> list[CharSpan]:
@@ -71,12 +61,13 @@ def _inert(rule: Rule) -> bool:
     return rule.count_scope == "section" or rule.position == "section-final"
 
 
-def _disabled(cfg: Config, text: str) -> list[dict[str, str]]:
-    """Section rules cannot work on plain text: name them instead of reporting silent zeros."""
-    if has_headings(text):
+def _disabled(cfg: Config, s: Structure) -> list[dict[str, str]]:
+    """Section rules need sections the caller stated: on a plain string, name them instead of
+    reporting silent zeros."""
+    if s.tree:
         return []
 
-    reason = "no markdown headings: the input is one section, so this rule is inert"
+    reason = "the input is a plain string, not a section tree, so this rule is inert"
 
     return [{"rule": r.id, "reason": reason} for r in cfg.rules if _inert(r)]
 
@@ -121,6 +112,15 @@ class Cand:
         return int(self.finding["span"]["start"])
 
 
+def _whole_field(text: str, s: Structure | None, start: int, end: int) -> bool:
+    """The match covers its whole block (title, subtitle, paragraph or item), apart from
+    surrounding whitespace and closing punctuation."""
+    block = s.block_at(start) if s is not None else None
+    lo, hi = (block.start, block.end) if block is not None else (0, len(text))
+
+    return not text[lo:start].strip() and not text[end:hi].strip(" \t\n.:;!?")
+
+
 def _finding(
     rule: Rule, cfg: Config, source: str, text: str, start: int, end: int, ctx_text: str
 ) -> dict[str, Any]:
@@ -140,7 +140,7 @@ def _finding(
         "context": ctx_text,
         "over_allowance": False,
         **({"experimental": True} if rule.experimental else {}),
-        **({"suggestion": rule.suggestion} if rule.suggestion else {}),
+        **({"remediation": rule.remediation} if rule.remediation else {}),
     }
 
 
@@ -152,7 +152,22 @@ def _candidates(
     assert doc is not None
     out: list[Cand] = []
 
-    for start, end in _rule_hits(doc, rule, ctx):
+    s = ctx.analysis.structure if ctx.analysis else None
+
+    for hit in _rule_hits(doc, rule, ctx):
+        start, end = hit
+
+        while start < end and text[start].isspace():
+            start += 1  # a match that opens on the blank line between blocks starts at its text
+
+        start, end = s.clip(start, end) if s is not None and s.tree else (start, end)
+
+        if rule.params.get("whole_field") and not _whole_field(text, s, start, end):
+            continue
+
+        if s is not None and s.field_kind(start) not in rule.applies_to:
+            continue
+
         tokens = doc.char_span(start, end, alignment_mode="expand")
 
         if tokens is None or not units.keep(rule.position, tokens):
@@ -163,10 +178,11 @@ def _candidates(
         if is_accepted(found["id"], accepted):
             continue
 
-        detail = ctx.details.pop((rule.id, start, end), None)
+        found["message"] = ctx.messages.pop((rule.id, *hit), rule.message)
+        detail = ctx.details.pop((rule.id, *hit), None)
 
         if detail:
-            found["message"] = f"{rule.message} {detail}"
+            found["message"] = f"{found['message']} {detail}"
             found["detail"] = detail
 
         out.append(Cand(found, tokens))
@@ -224,7 +240,8 @@ def _composite(
 
         ok = (
             all(met(m) for m in rule.requires_all)
-            and (not rule.requires_any or any(met(m) for m in rule.requires_any))
+            and (not rule.requires_any
+                 or sum(met(m) for m in rule.requires_any) >= rule.min_any)
             and not any(met(m) for m in rule.requires_none)
         )
         trace.setdefault(rule.id, []).append({"unit": unit_id, "members": counts, "fired": ok})
@@ -252,40 +269,53 @@ def _composite(
     return out, used
 
 
+def parse(text: str | dict[str, Any] | Structure, config: Config | None = None) -> Analysis:
+    """One spaCy parse of the document, as an Analysis that metrics and records share."""
+    s = coerce(text)
+
+    return Analysis(parse_doc(get_nlp(), s), s.text, settings=_settings(config), structure=s)
+
+
+def _settings(config: Config | None) -> dict[str, Any]:
+    return {"topics": config.topics, "records": config.records} if config else {}
+
+
 def analyze(
-    text: str,
+    text: str | dict[str, Any] | Structure,
     source: str = SOURCE_STDIN,
     config: Config | None = None,
     min_confidence: str = "inferred",
     accepted: set[str] | None = None,
     trace: bool = False,
 ) -> dict[str, Any]:
-    if len(text) > MAX_CHARS:
+    """Findings, per-part scores and the document score. text is a plain string (one part) or a
+    document tree (see clarity.structure)."""
+    s = coerce(text)
+
+    if len(s.text) > MAX_CHARS:
         raise InputError(
-            f"input is too large: {len(text):,} characters, the limit is {MAX_CHARS:,}. "
+            f"input is too large: {len(s.text):,} characters, the limit is {MAX_CHARS:,}. "
             "Split the document and check the parts separately."
         )
 
     cfg = config or load_config(None)
     accepted = accepted or set()
     nlp = get_nlp()
-    masked = mask_markup(text)
-    scannable = mask_code_blocks(text)
-    doc = nlp(masked)
-    words = _count_words(doc)
+    text = s.text
+    doc = parse_doc(nlp, s)
     clause_list = clauses(doc)
-    sections = section_ranges(scannable)
-    analysis = Analysis(doc, masked, text)
-    units = Units(doc, scannable, sections, clause_list)
+    sections = s.sections()
+    analysis = Analysis(doc, text, settings=_settings(cfg), structure=s)
+    units = Units(doc, s.body_blocks(), sections, clause_list)
     ctx = structural.Context(
         nlp,
         sections,
         clauses=clause_list,
         clause_of=units.clause_of,
-        paragraphs=prose_paragraphs(scannable),
+        paragraphs=s.paragraphs(),
         analysis=analysis,
     )
-    disabled = _disabled(cfg, scannable)
+    disabled = _disabled(cfg, s)
     off = {d["rule"] for d in disabled}
     notes: dict[str, Any] = {"suppressed": [], "inactive": [], "composites": {}}
     pool: dict[str, list[Cand]] = {}
@@ -342,31 +372,41 @@ def analyze(
         for rid in {m["rule"] for m in composition.members(rule)}:
             pool[rid] = [c for c in pool.get(rid, []) if id(c) not in used]
 
+    words = {p.index: s.words(doc, p.index) for p in s.parts}
     findings: list[dict[str, Any]] = []
-    per_rule: dict[str, dict[str, int]] = {}
-    effective: dict[str, Rule] = {}
-    over_categories: set[str] = set()
+    per_rule: dict[int, dict[str, dict[str, int]]] = {p.index: {} for p in s.parts}
+    effective: dict[int, dict[str, Rule]] = {p.index: {} for p in s.parts}
+    over_categories: dict[int, set[str]] = {p.index: set() for p in s.parts}
 
     def settle(rule: Rule) -> None:
-        cands = pool.get(rule.id, [])
-        shown = composition.allowance_override(rule, analysis, over_categories)
-        eff = replace(rule, **shown[0]) if shown else rule
-        effective[rule.id] = eff
-        built = [c.finding for c in cands]
-        unit_ids = [units.unit(rule.count_scope, c.tokens, c.start) for c in cands]
-        over = _mark_over(eff, built, unit_ids, words)
+        if rule.marker:
+            return  # read by composites and in_scope above; never reported or scored
 
-        if shown:
-            for f in built:
-                f["allowance_note"] = shown[1]
+        by_part: dict[int, list[Cand]] = {}
 
-        if not rule.experimental:
-            per_rule[rule.id] = {"found": len(built), "over": over}
+        for c in pool.get(rule.id, []):
+            by_part.setdefault(s.part_at(c.start), []).append(c)
 
-            if over:
-                over_categories.add(cfg.categories[int(rule.category)].id)
+        for part in s.parts:
+            cands = by_part.get(part.index, [])
+            shown = composition.allowance_override(rule, analysis, over_categories[part.index])
+            eff = replace(rule, **shown[0]) if shown else rule
+            effective[part.index][rule.id] = eff
+            built = [c.finding for c in cands]
+            unit_ids = [units.unit(rule.count_scope, c.tokens, c.start) for c in cands]
+            over = _mark_over(eff, built, unit_ids, words[part.index])
 
-        findings.extend(built)
+            if shown:
+                for f in built:
+                    f["allowance_note"] = shown[1]
+
+            if not rule.experimental:
+                per_rule[part.index][rule.id] = {"found": len(built), "over": over}
+
+                if over:
+                    over_categories[part.index].add(cfg.categories[int(rule.category)].id)
+
+            findings.extend(built)
 
     for rule in live:
         if not composition.gated_on_findings(rule):
@@ -376,23 +416,140 @@ def analyze(
         if composition.gated_on_findings(rule):
             settle(rule)
 
-    categories = _categories(cfg, per_rule, words, effective)
+    parts = []
+
+    for part in s.parts:
+        cats = _categories(cfg, per_rule[part.index], words[part.index], effective[part.index])
+        parts.append({"categories": cats, "score": round(score_document(cats), 1),
+                      "words": words[part.index],
+                      **(_text_measures(doc, part, cfg) if s.tree else {})})  # fmt: skip
+
     findings.sort(key=lambda f: (f["span"]["start"], f["rule"]))
+
+    for f in findings:
+        _place(f, s)
+
+    total = sum(words.values())
     result = {
         "findings": findings,
-        "categories": categories,
-        "score": round(score_document(categories), 1),
-        "words": words,
+        "categories": _merge_categories([p["categories"] for p in parts], list(words.values())),
+        "score": _rollup(s, parts, 0)[0],
+        "words": total,
         "sentences": len(sentences(doc)),
         "readability": readability_report(doc, cfg.readability),
         "prose_metrics": prose_metrics_report(analysis, cfg.prose_metrics),
         "disabled_rules": disabled,
     }
 
+    result["section"] = _section_tree(s, parts, findings, 0)
+
     if trace:
         result["trace"] = notes
 
     return result
+
+
+def _place(f: dict[str, Any], s: Structure) -> None:
+    """Rewrite a finding's location into the caller's terms: the section path, the field, and
+    offsets, line and column inside that field. A plain string is one field, so nothing moves."""
+    start, end = int(f["span"]["start"]), int(f["span"]["end"])
+    where = s.locate(start, end)
+    f["span"].update(where["span"])
+    f["line"], f["col"] = where["line"], where["col"]
+
+    f["section"] = s.parts[s.part_at(start)].path
+    f["field"] = where["field"]
+
+    for child in f.get("children", []):
+        _place(child, s)
+
+
+def _text_measures(doc: Doc, part: Any, cfg: Config) -> dict[str, Any]:
+    """Readability and prose metrics over a section's own text paragraphs. Titles, subtitles
+    and items are fragments, so a section without text gets neither."""
+    text_blocks = [b for b in part.blocks if b.field == "text"]
+
+    if not text_blocks:
+        return {}
+
+    span = doc.char_span(text_blocks[0].start, text_blocks[-1].end, alignment_mode="expand")
+
+    if span is None:
+        return {}
+
+    sub = span.as_doc()
+    analysis = Analysis(sub, sub.text, settings={})
+
+    return {"readability": readability_report(sub, cfg.readability),
+            "prose_metrics": prose_metrics_report(analysis, cfg.prose_metrics)}  # fmt: skip
+
+
+def _rollup(s: Structure, parts: list[dict[str, Any]], index: int) -> tuple[float, int]:
+    """Word-weighted score of a part and everything under it, and the words that weigh it."""
+    pairs = [(parts[index]["score"], parts[index]["words"])]
+    pairs += [_rollup(s, parts, c) for c in s.parts[index].children]
+    weight = sum(w for _, w in pairs)
+
+    if not weight:
+        return parts[index]["score"], 0
+
+    return round(sum(sc * w for sc, w in pairs) / weight, 1), weight
+
+
+def _section_tree(
+    s: Structure, parts: list[dict[str, Any]], findings: list[dict[str, Any]], index: int
+) -> dict[str, Any]:
+    """The caller's tree, returned with each section's own findings, categories and scores."""
+    p = s.parts[index]
+    score, weight = _rollup(s, parts, index)
+    node: dict[str, Any] = {"path": p.path}
+
+    if p.id is not None:
+        node["id"] = p.id
+
+    if p.title is not None:
+        node["title"] = p.title
+
+    measures: dict[str, Any] = {
+        k: parts[index][k] for k in ("readability", "prose_metrics") if k in parts[index]
+    }
+    node.update({
+        "words": parts[index]["words"],
+        "score": parts[index]["score"],
+        "rollup": {"score": score, "words": weight},
+        "findings": [f for f in findings if f["section"] == p.path],
+        "categories": [c for c in parts[index]["categories"] if c["found"]],
+        **measures,
+        "sections": [_section_tree(s, parts, findings, c) for c in p.children],
+    })  # fmt: skip
+
+    return node
+
+
+def _merge_categories(
+    per_part: list[list[dict[str, Any]]], words: list[int]
+) -> list[dict[str, Any]]:
+    """Document-level categories: counts summed, penalty word-weighted across parts."""
+    if len(per_part) == 1:
+        return per_part[0]
+
+    total = sum(words) or 1
+    out = []
+
+    for rows in zip(*per_part, strict=True):
+        merged = dict(rows[0])
+
+        for key in ("found", "over_by"):
+            merged[key] = sum(r[key] for r in rows)
+
+        merged["penalty"] = round(sum(r["penalty"] * w for r, w in zip(rows, words, strict=True))
+                                  / total, 2)  # fmt: skip
+        merged["allowance"] = round(sum(r["allowance"] for r in rows), 2)
+        merged["capped"] = any(r["capped"] for r in rows)
+        merged["rate_per_1k"] = round(merged["found"] * 1000 / total, 2)
+        out.append(merged)
+
+    return out
 
 
 def _categories(
@@ -431,3 +588,13 @@ def _categories(
         out.append(result)
 
     return out
+
+
+CONTRACT_KEYS = ("score", "words", "sentences", "section", "readability", "prose_metrics",
+                 "disabled_rules")  # fmt: skip
+
+
+def contract(result: dict[str, Any]) -> dict[str, Any]:
+    """The response clients get: the document score and the section tree. Each finding appears
+    once, in the section where it was found."""
+    return {k: result[k] for k in CONTRACT_KEYS if k in result}

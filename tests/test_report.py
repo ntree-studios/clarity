@@ -138,11 +138,18 @@ def test_plain_text_prints_a_notice_naming_the_inert_section_rules():
     out = "\n".join(report("Pick tools. It depends."))
 
     assert re.search(r"notice: .*section-restatement.*it-depends-conclusion", out)
-    assert "no markdown headings" in out
+    assert "plain text has no sections" in out
 
 
-def test_headings_remove_the_notice():
-    assert "notice:" not in "\n".join(report("# Choice\n\nPick tools carefully. It depends."))
+def test_a_section_tree_removes_the_notice():
+    tree = '{"title": "Choice", "text": "Pick tools carefully. It depends."}'
+    _, out, _ = run(["check", "-", "--tree"], stdin=tree)
+
+    assert "notice:" not in out
+
+
+def test_markdown_headings_in_a_plain_string_keep_the_notice():
+    assert "notice:" in "\n".join(report("# Choice\n\nPick tools carefully. It depends."))
 
 
 def test_json_reports_disabled_rules_with_a_reason():

@@ -5,6 +5,8 @@
 # does not separate the two. Use it only if your own corpus says it does: clarity test --corpus.
 rules:
   - id: definition-chain
+    description: "Three or more definitions in a row in one paragraph (\"A queue is... A stack is... A heap is...\"). It reads as a glossary, and the reader learns terms with no sense of how to use them. It ships in the explanation example set and is off by default."
+    remediation: "Explain with an example. Define one term, show it in use, and bring in the next term only when the text needs it."
     category: verbosity
     backend: structural
     function: definition_chain

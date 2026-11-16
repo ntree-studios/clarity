@@ -15,6 +15,11 @@ dependencies = [
   "mcp>=1.2",
   "PyYAML>=6",
   "nltk>=3.8",
+  # Topic analysis. Pinned: stop-word lists, tokenizers and community detection can change
+  # between releases, and the topic report must not.
+  "scikit-learn==1.9.1",
+  "networkx==3.7",
+  "numpy==2.5.4",
 ]
 
 [project.optional-dependencies]
@@ -27,7 +32,7 @@ clarity = "clarity.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-clarity = ["*.yml", "data/*", "profiles/*.yml", "rules/*.yml", "examples/*.yml", "guides/*.md"]
+clarity = ["*.yml", "data/*", "rules/*.yml", "examples/*.yml", "examples/profiles/*.yml", "guides/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

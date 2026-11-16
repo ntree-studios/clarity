@@ -32,7 +32,7 @@ once, and cannot name other composites.
 
 ## active_when
 
-Applies a rule only when a metric condition holds. A condition is `{metric, op, value}` with `op`
+Applies a rule only when a metric condition is true. A condition is `{metric, op, value}` with `op`
 one of `lt`, `lte`, `gt`, `gte`, `eq`. Give `key` to test a different scalar of the metric.
 
 ```yaml
@@ -43,7 +43,7 @@ rules:
 
 ## allowance_when
 
-Replaces the allowance when a condition holds. The first entry that holds wins. An entry names a
+Replaces the allowance when a condition is true. The first entry that holds wins. An entry names a
 metric condition or `over_allowance: <category>` (another category), plus the allowance field
 that matches the rule's `count_scope`.
 

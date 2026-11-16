@@ -1,12 +1,19 @@
 """Config discovery, layered merge, profiles and merge explanations.
 
 Two locations, nearest wins: the user directory ($CLARITY_HOME or ~/.clarity) and the first
-.clarity/ found walking up from the input. The bundled pack is the base under both.
+.clarity/ found walking up from the input. $CLARITY_CONFIG (paths joined with the OS path
+separator) replaces discovery when no --config is given, and $CLARITY_PROFILE picks a profile when
+no --profile is given; the MCP server sets both from its own flags.
+
+The shipped rule pack and the shipped profiles are the base under every layer. `builtin: false`
+in any layer drops the shipped rules, watchlist and profiles and keeps the engine settings
+(categories, scoring, readability, topics), so a user can run only their own rules.
 """
 
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
@@ -25,14 +32,19 @@ from clarity.config import (
     build_config,
     merge_fields,
     merge_layers,
+    merge_rules,
+    merge_topics,
     record,
 )
 
 DIR_NAME = ".clarity"
 ENV_HOME = "CLARITY_HOME"
+ENV_CONFIG = "CLARITY_CONFIG"
+ENV_PROFILE = "CLARITY_PROFILE"
+SHIPPED_ONLY = ("rules", "watchlist")
 PROFILE_KEYS = {
     "name", "description", "allowance_multiplier", "weight_override", "disable",
-    "rule_override", "readability",
+    "rule_override", "readability", "topics", "rules",
 }  # fmt: skip
 RULE_FIELDS = set(Rule.__dataclass_fields__)
 
@@ -52,6 +64,8 @@ class Resolved:
     provenance: Provenance = field(default_factory=dict)
     merged: dict[str, Any] = field(default_factory=dict)
     folders: list[Path] = field(default_factory=list)
+    profiles: dict[str, Profile] = field(default_factory=dict)
+    builtin: bool = True
 
 
 def user_dir() -> Path:
@@ -111,6 +125,9 @@ def _profiles_in(folder: Path) -> dict[str, Profile]:
     found = {}
 
     for path in sorted(folder.glob("*.yml")):
+        if path.name.endswith(".test.yml"):
+            continue
+
         data = read_yaml(path) or {}
         unknown = set(data) - PROFILE_KEYS
 
@@ -123,10 +140,14 @@ def _profiles_in(folder: Path) -> dict[str, Profile]:
     return found
 
 
-def discover_profiles(folders: list[Path]) -> dict[str, Profile]:
-    """Bundled examples first, then each directory in order; the nearest name wins."""
-    bundled = Path(str(resources.files("clarity").joinpath("profiles")))
-    found = _profiles_in(bundled) if bundled.is_dir() else {}
+def shipped_profiles_dir() -> Path:
+    return Path(str(resources.files("clarity").joinpath("examples", "profiles")))
+
+
+def discover_profiles(folders: list[Path], builtin: bool = True) -> dict[str, Profile]:
+    """The shipped profiles (unless builtin is off), then each config directory's in order; the
+    nearest name wins, so a user profile named like a shipped one replaces it."""
+    found: dict[str, Profile] = _profiles_in(shipped_profiles_dir()) if builtin else {}
 
     for folder in folders:
         if (folder / "profiles").is_dir():
@@ -152,30 +173,110 @@ def _known_rule(merged: dict[str, Any], rid: Any, path: str, what: str) -> dict[
 
 
 def apply_profile(merged: dict[str, Any], prov: Provenance, profile: Profile) -> None:
-    """disable, then rule_override, then allowance_multiplier, then weight_override."""
+    """rules, then disable, then rule_override, then allowance_multiplier, then weight_override,
+    then readability and topics settings. Rules a profile adds exist only while it is active."""
     data, path = profile.data, profile.path
+    merge_rules(merged, data.get("rules") or [], path, prov)
 
     for rid in data.get("disable") or []:
         _known_rule(merged, rid, path, "disable")["disabled"] = True
         record(prov, f"rule:{rid}", "enabled", path, False, "profile disable")
 
-    for item in data.get("rule_override") or []:
-        target = _known_rule(merged, item.get("id"), path, "rule_override")
-        fields = {k: v for k, v in item.items() if k != "id"}
-        known = {k: v for k, v in fields.items() if k in RULE_FIELDS}
-        merge_fields(target, known, path, prov, f"rule:{item['id']}")
-
-        for key, value in fields.items():
-            if key not in RULE_FIELDS:
-                target["params"] = {**target.get("params", {}), key: value}
-                record(prov, f"rule:{item['id']}", key, path, value, "profile rule_override")
-
+    override_rules(merged, prov, data.get("rule_override") or [], path)
     _multiply_allowances(merged, prov, data.get("allowance_multiplier") or {}, path)
 
     for name, weight in (data.get("weight_override") or {}).items():
         _override_weight(merged, prov, name, weight, path)
 
     merge_fields(merged["readability"], data.get("readability") or {}, path, prov, "readability")
+    merge_topics(merged["topics"], data.get("topics"), path, prov)
+
+
+def override_rules(
+    merged: dict[str, Any], prov: Provenance, items: list[dict[str, Any]], path: str
+) -> None:
+    """rule_override items: {id, field: value}. Rule fields merge, enabled switches the rule on
+    or off, and any other key becomes a param."""
+    for item in items:
+        target = _known_rule(merged, item.get("id"), path, "rule_override")
+        fields = {k: v for k, v in item.items() if k != "id"}
+        # enabled: true switches on a rule the pack ships off (ease-words in technical).
+        known = {k: v for k, v in fields.items() if k in RULE_FIELDS or k == "enabled"}
+        merge_fields(target, known, path, prov, f"rule:{item['id']}")
+
+        for key, value in fields.items():
+            if key not in known:
+                target["params"] = {**target.get("params", {}), key: value}
+                record(prov, f"rule:{item['id']}", key, path, value, "profile rule_override")
+
+
+SWITCHES = "<disable/enable>"
+
+
+def switches(
+    disable: Sequence[str] | None = None, enable: Sequence[str] | None = None
+) -> list[dict[str, Any]]:
+    """disable and enable arguments as rule_override items, disables first so an enable can
+    turn one rule back on inside a disabled category. Each value may hold several ids split by
+    commas. The ids may be rule ids or category ids; resolve() expands and checks them."""
+
+    def ids(values: Sequence[str] | None) -> list[str]:
+        return [i.strip() for v in values or [] for i in v.split(",") if i.strip()]
+
+    return [{"id": i, "enabled": False} for i in ids(disable)] + [
+        {"id": i, "enabled": True} for i in ids(enable)
+    ]
+
+
+def _expand_switches(merged: dict[str, Any], items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A category id becomes one item per rule in that category. A name that is both a category
+    and a rule means the category. Unknown ids are an error that lists them all. A composite
+    rule whose member is switched off goes off with it, since it cannot run without it."""
+    categories = {c.get("id") for c in merged["categories"].values()}
+    unknown = sorted({i["id"] for i in items} - categories - set(merged["rules"]))
+
+    if unknown:
+        raise ConfigError(f"unknown rule or category ids: {', '.join(unknown)}")
+
+    out = []
+
+    for item in items:
+        if item["id"] not in categories:
+            out.append(item)
+
+            continue
+
+        out.extend({**item, "id": rid} for rid, rule in merged["rules"].items()
+                   if _category_id(rule.get("category"), merged) == item["id"])  # fmt: skip
+
+    disables = [i for i in out if not i["enabled"]]
+    enables = [i for i in out if i["enabled"]]
+    dependents = _dependents(merged, {i["id"] for i in disables} - {i["id"] for i in enables})
+
+    return disables + [{"id": rid, "enabled": False} for rid in dependents] + enables
+
+
+def _dependents(merged: dict[str, Any], off: set[str]) -> list[str]:
+    """Composite rules that name a rule in off as a member, directly or through another
+    composite."""
+    from clarity.composition import GROUPS
+
+    found: list[str] = []
+    changed = True
+
+    while changed:
+        changed = False
+
+        for rid, rule in merged["rules"].items():
+            members = {m.get("rule") for g in GROUPS for m in rule.get(g) or []
+                       if isinstance(m, dict)}  # fmt: skip
+
+            if rid not in off and members & off:
+                off.add(rid)
+                found.append(rid)
+                changed = True
+
+    return found
 
 
 def _multiply_allowances(
@@ -219,46 +320,115 @@ def _override_weight(
     raise ConfigError(f"{path}: weight_override refers to unknown category {name!r}")
 
 
+def _explicit_paths(explicit: str | Path | Sequence[str | Path]) -> list[Path]:
+    """--config values: files, or config directories laid out like .clarity/, in order."""
+    items = [explicit] if isinstance(explicit, (str, Path)) else list(explicit)
+    paths = [Path(item) for item in items]
+
+    for path in paths:
+        if not path.exists():
+            raise ConfigError(f"{path}: config not found")
+
+    return paths
+
+
 def resolve(
-    explicit: str | Path | None = None,
+    explicit: str | Path | Sequence[str | Path] | None = None,
     start: Path | None = None,
     profile: str | None = None,
     extra: dict[str, Any] | None = None,
+    overrides: list[dict[str, Any]] | None = None,
 ) -> Resolved:
     """Resolve the config for an input at start (default: the working directory).
 
+    explicit replaces discovery with one or more --config paths, applied in order. A file is
+    one layer; a directory loads like a .clarity/ folder (clarity.yml, rules/*.yml,
+    watchlist.yml, profiles/).
+
     extra is one more layer applied last, for a rule that is being tested but not yet saved.
+    overrides are rule_override items from switches(), applied after the profile so a disable or
+    enable argument beats both the config files and the profile.
     """
-    layers = [Layer("bundled", _read_default())]
+    layers: list[Layer] = []
     folders: list[Path] = []
+    env = os.environ.get(ENV_CONFIG)
+
+    if explicit is None and env:
+        explicit = [p for p in env.split(os.pathsep) if p]
+
+    if profile is None:
+        profile = os.environ.get(ENV_PROFILE) or None
 
     if explicit is not None:
-        path = Path(explicit)
-        layers.append(_as_layer(path, None))
-        folders = [path.resolve().parent]
+        for path in _explicit_paths(explicit):
+            if path.is_dir():
+                layers.extend(dir_layers(path))
+                folder = path.resolve()
+            else:
+                layers.append(_as_layer(path, None))
+                folder = path.resolve().parent
+
+            if folder not in folders:
+                folders.append(folder)
     else:
         user, project = user_dir(), find_project_dir(start or Path.cwd())
 
-        for folder in (user, project):
-            if folder is not None and folder.is_dir() and folder not in folders:
-                folders.append(folder)
-                layers.extend(dir_layers(folder))
+        for candidate in (user, project):
+            if candidate is not None and candidate.is_dir() and candidate not in folders:
+                folders.append(candidate)
+                layers.extend(dir_layers(candidate))
 
     if extra is not None:
         layers.append(Layer("<proposed>", extra))
 
+    builtin = _builtin(layers)
+    shipped = _read_default()
+
+    if not builtin:
+        shipped = {k: v for k, v in shipped.items() if k not in SHIPPED_ONLY}
+
+    layers.insert(0, Layer("bundled", shipped))
     merged, prov = merge_layers(layers)
-    chosen = _select_profile(profile, merged, discover_profiles(folders))
+    available = discover_profiles(folders, builtin)
+    chosen = _select_profile(profile, merged, available)
 
     if chosen is not None:
         apply_profile(merged, prov, chosen)
 
+    if overrides:
+        override_rules(merged, prov, _expand_switches(merged, overrides), SWITCHES)
+
     files = [layer.source for layer in layers if layer.source != "bundled"]
     config = build_config(merged, prov)
     sources = {r.id: _rule_source(prov, r.id) for r in config.rules}
-    fixtures.enforce(config, fixtures.load_index(folders), sources)
+    fixtures.enforce(config, fixtures.load_index(folders, profile_fixtures(chosen)), sources)
 
-    return Resolved(config, files, chosen, prov, merged, folders)
+    return Resolved(config, files, chosen, prov, merged, folders, available, builtin)
+
+
+def _builtin(layers: list[Layer]) -> bool:
+    """The nearest layer's builtin: value; true when no layer sets it."""
+    value = True
+
+    for layer in layers:
+        if "builtin" in layer.data:
+            value = layer.data["builtin"]
+
+            if not isinstance(value, bool):
+                raise ConfigError(f"{layer.source}: builtin must be true or false")
+
+    return value
+
+
+def profile_fixtures(profile: Profile | None) -> list[Path]:
+    """profiles/<name>.test.yml beside the active profile: fixtures for the rules it adds."""
+    if profile is None:
+        return []
+
+    path = Path(profile.path)
+    sibling = path.with_name(path.name.removesuffix(".yml") + ".test.yml")
+
+    return [sibling] if sibling.is_file() else []
 
 
 def _rule_source(prov: Provenance, rule_id: str) -> str:

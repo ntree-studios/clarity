@@ -1,0 +1,21 @@
+# Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
+rule: assistant-leakage
+should_not_fire:
+  - "The chatbot replied \"I hope this helps\" to every question."
+  - "I hope this plan works for the team."
+  - "Certainly the river rose after the storm."
+  - "Getting Started"
+should_fire:
+  - "Here is the summary you asked for. I hope this helps!"
+  - "As an AI language model, I cannot browse the web."
+  - "Would you like me to expand the second section?"
+---
+rule: template-placeholder
+should_not_fire:
+  - "The array index [0] holds the first item."
+  - "See section [3] for details."
+  - "Your Name and Address"
+should_fire:
+  - "Dear [Your Name], thank you for applying."
+  - "Signed on 2025-xx-xx by the board."
+  - "Source: INSERT_SOURCE_URL_01"

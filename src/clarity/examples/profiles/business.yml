@@ -1,0 +1,39 @@
+# Starting point, not authority. Business writing: email, memos, reports, disclosures. Answer
+# first, short sentences, active voice, numbers in place of adjectives. Every setting names its
+# source or says it is opinion. Sources are summarised in research_notes/AI slop and writing
+# rules/genre_conventions.md (Business writing) and reports/AI slop and writing rules.md
+# (Profiles should become section-aware). Edit it.
+#
+# Left at the bundled defaults on purpose:
+# - weasel-attribution stays at 0 (Amazon "no weasel words", secondary; SEC "definite, concrete,
+#   everyday words"). The bundled pack already allows none.
+# - Bullets are not penalised: the SEC handbook says use them "wherever possible", Amazon's
+#   narrative memos avoid them; the sources disagree, so the profile stays out of it.
+# - Answer-first (BLUF) has no rule yet; it needs a first-paragraph check. Gap, not a setting.
+name: business
+description: Email, memos, reports, disclosures
+
+allowance_multiplier:
+  # SEC Plain English Handbook: "Ruthlessly eliminate jargon and legalese"; Microsoft: "Avoid
+  # jargon". Halves the corporate-vocabulary allowances.
+  corporate-vocabulary: 0.5
+  # Amazon "replace adjectives with data" (secondary, unverified): intensifiers get half the
+  # allowance.
+  intensifiers: 0.5
+
+rule_override:
+  # SEC handbook singles out the "passive with agent deleted"; Army writing guidance calls active
+  # voice "the major style change". 0.75 x the bundled 2 per 1k, as the report suggests.
+  - id: passive-agentless
+    max_per_1k: 1.5
+  # Amazon (secondary, unverified): sentences under 30 words. Garner's 20-word target is an
+  # average, which this per-sentence rule cannot check.
+  - id: long-sentence
+    max_words: 30
+  # SEC Rule 421(d) plain-English elements: "No multiple negatives".
+  - id: double-negation
+    severity: error
+  # Microsoft top 10 tips: "Avoid weak phrasing like there is, there are, and there were".
+  # 1 per 1k is opinion.
+  - id: expletive-construction
+    max_per_1k: 1

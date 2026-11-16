@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 
 COUNT_SCOPES = ("document", "section", "paragraph", "sentence", "clause")
+FIELDS = ("title", "subtitle", "text", "items")  # the section fields a rule can read
 POSITIONS = (
     "anywhere",
     "sentence-initial",
@@ -26,7 +27,7 @@ BACKEND_FIELDS: dict[str, tuple[str, ...]] = {
     "phrase": ("phrases", "lower_phrases", "pattern", "match"),
     "dependency": ("patterns", "anchor", "concreteness_max", "next_lemma"),
     "structural": ("function", "params"),
-    "composite": ("requires_all", "requires_any", "requires_none", "note"),
+    "composite": ("requires_all", "requires_any", "min_any", "requires_none", "note"),
 }
 # What a backend cannot work without: any one field of a tuple satisfies that requirement.
 BACKEND_REQUIRES: dict[str, tuple[tuple[str, ...], ...]] = {
@@ -34,6 +35,9 @@ BACKEND_REQUIRES: dict[str, tuple[tuple[str, ...], ...]] = {
     "dependency": (("patterns",),),
     "structural": (("function",),),
 }
+
+
+RECORD_KEYS = ("section_kinds", "significance")
 
 
 class ConfigError(ValueError):
@@ -51,8 +55,10 @@ class Rule:
     max_per_scope: int | None = None
     count_scope: str = "document"
     position: str = "anywhere"
+    applies_to: list[str] = field(default_factory=lambda: list(FIELDS))
     message: str = ""
-    suggestion: str | None = None
+    description: str = ""  # what the rule detects and why it is a problem for the reader
+    remediation: str = ""  # how to fix a finding; carried on every finding
     # phrase backend
     phrases: list[str] = field(default_factory=list)
     lower_phrases: list[str] = field(default_factory=list)
@@ -68,11 +74,14 @@ class Rule:
     # composite backend: findings of other rules that must (or must not) share a scope
     requires_all: list[Any] = field(default_factory=list)
     requires_any: list[Any] = field(default_factory=list)
+    min_any: int = 1  # how many distinct requires_any members must be present
     requires_none: list[Any] = field(default_factory=list)
     note: str = ""
     next_lemma: list[str] = field(default_factory=list)
     experimental: bool = False
     fixtures_exempt: bool = False
+    # matched for composites and in_scope conditions only; never reported or scored
+    marker: bool = False
     # structural backend
     function: str | None = None
     params: dict[str, Any] = field(default_factory=dict)
@@ -94,6 +103,8 @@ class Config:
     severity_weights: dict[str, float]
     readability: dict[str, Any] = field(default_factory=dict)
     prose_metrics: dict[str, Any] = field(default_factory=dict)
+    topics: dict[str, Any] = field(default_factory=dict)
+    records: dict[str, Any] = field(default_factory=dict)
 
 
 def _read_default() -> dict[str, Any]:
@@ -125,6 +136,9 @@ def _build_rule(raw: dict[str, Any]) -> Rule:
     known = set(Rule.__dataclass_fields__)
     unknown = set(raw) - known - {"disabled"}
 
+    if "suggestion" in unknown:
+        raise ConfigError(f"rule {rid}: 'suggestion' was renamed to 'remediation'")
+
     if {"scope", "clause_initial"} & unknown:
         raise ConfigError(
             f"rule {rid}: 'scope' and 'clause_initial' were replaced by count_scope "
@@ -149,6 +163,11 @@ def _build_rule(raw: dict[str, Any]) -> Rule:
         if value not in allowed:
             raise ConfigError(f"rule {rid}: {name} must be one of {allowed}, got {value!r}")
 
+    fields_ = rule.applies_to if isinstance(rule.applies_to, list) else []
+
+    if not fields_ or any(f not in FIELDS for f in fields_):
+        raise ConfigError(f"rule {rid}: applies_to must be a non-empty list of {list(FIELDS)}")
+
     _resolve_allowance(rule)
     _check_requirements(rule)
 
@@ -172,6 +191,11 @@ def _check_requirements(rule: Rule) -> None:
                 f"rule {rule.id}: unknown structural function {rule.function!r}; "
                 f"see clarity surface --functions"
             )
+
+        if rule.function == "query":
+            from clarity.records import validate_params
+
+            validate_params(rule)
 
 
 def _resolve_allowance(rule: Rule) -> None:
@@ -237,7 +261,7 @@ class Layer:
 Provenance = dict[str, dict[str, list[tuple[str, str, str]]]]
 TOP_LEVEL = {
     "version", "severity_weights", "categories", "rules", "watchlist", "readability",
-    "prose_metrics", "profile",
+    "prose_metrics", "profile", "topics", "records", "builtin",
 }  # fmt: skip
 
 
@@ -331,7 +355,8 @@ def merge_layers(layers: list[Layer]) -> tuple[dict[str, Any], Provenance]:
     """Merge layers in order; later layers are nearer and win."""
     merged: dict[str, Any] = {
         "severity_weights": {}, "categories": {}, "rules": {}, "readability": {},
-        "prose_metrics": {}, "profile": None, "profile_source": None,
+        "prose_metrics": {}, "profile": None, "profile_source": None, "topics": {},
+        "records": {},
     }  # fmt: skip
     prov: Provenance = {}
 
@@ -342,24 +367,54 @@ def merge_layers(layers: list[Layer]) -> tuple[dict[str, Any], Provenance]:
         if unknown:
             raise ConfigError(f"{layer.source}: unknown top-level keys {sorted(unknown)}")
 
-        for block in ("severity_weights", "readability", "prose_metrics"):
+        for block in ("severity_weights", "readability", "prose_metrics", "records"):
             merge_fields(merged[block], data.get(block) or {}, layer.source, prov, block)
 
         _layer_categories(merged, layer, prov)
+        merge_topics(merged["topics"], data.get("topics"), layer.source, prov)
 
         if "profile" in data:
             merged["profile"], merged["profile_source"] = data["profile"], layer.source
 
         entries = [_watchlist_rule(e) for e in data.get("watchlist") or []]
-
-        for rule in [*entries, *(data.get("rules") or [])]:
-            if "id" not in rule:
-                raise ConfigError(f"{layer.source}: rule missing id: {rule}")
-
-            target = merged["rules"].setdefault(rule["id"], {"id": rule["id"]})
-            merge_fields(target, rule, layer.source, prov, f"rule:{rule['id']}")
+        merge_rules(merged, [*entries, *(data.get("rules") or [])], layer.source, prov)
 
     return merged, prov
+
+
+def merge_rules(merged: dict[str, Any], rules: Any, source: str, prov: Provenance) -> None:
+    """Rules merge by id: a known id overrides the fields it sets, a new id adds a rule."""
+    if not isinstance(rules, list):
+        raise ConfigError(f"{source}: rules must be a list")
+
+    for rule in rules:
+        if not isinstance(rule, dict) or "id" not in rule:
+            raise ConfigError(f"{source}: rule missing id: {rule}")
+
+        target = merged["rules"].setdefault(rule["id"], {"id": rule["id"]})
+        merge_fields(target, rule, source, prov, f"rule:{rule['id']}")
+
+
+def merge_topics(
+    target: dict[str, Any], new: Any, source: str, prov: Provenance
+) -> None:
+    """Merge one layer's topics: block per key, recording the file that set each value."""
+    from clarity import topics
+
+    if new is None:
+        return
+
+    try:
+        topics.validate(new, partial=True)
+    except topics.TopicSettingsError as exc:
+        raise ConfigError(f"{source}: {exc}") from exc
+
+    for key, value in new.items():
+        if isinstance(value, dict):
+            merge_fields(target.setdefault(key, {}), value, source, prov, f"topics.{key}")
+        else:
+            target[key] = value
+            record(prov, "topics", key, source, value)
 
 
 def _last_source(prov: Provenance, scope: str) -> str:
@@ -404,12 +459,29 @@ def build_config(merged: dict[str, Any], prov: Provenance) -> Config:
     except composition.CompositionError as exc:
         raise ConfigError(f"{_last_source(prov, f'rule:{exc.rule_id}')}: {exc}") from exc
 
+    unknown = set(merged["records"]) - set(RECORD_KEYS)
+
+    if unknown:
+        raise ConfigError(
+            f"{_last_source(prov, 'records')}: records: unknown keys {sorted(unknown)}; "
+            f"known: {list(RECORD_KEYS)}"
+        )
+
+    from clarity import topics
+
+    try:
+        topic_settings = topics.effective(merged["topics"])
+    except topics.TopicSettingsError as exc:
+        raise ConfigError(f"{_last_source(prov, 'topics')}: {exc}") from exc
+
     return Config(
         categories,
         rules,
         merged["severity_weights"],
         merged["readability"],
         merged["prose_metrics"],
+        topic_settings,
+        merged["records"],
     )
 
 
@@ -463,6 +535,8 @@ def describe_rules(config: Config, category: int | None = None) -> list[dict[str
                 "max_per_1k": rule.max_per_1k,
                 "max_per_scope": rule.max_per_scope,
                 "message": rule.message,
+                "description": rule.description,
+                "remediation": rule.remediation,
             }
         )
 

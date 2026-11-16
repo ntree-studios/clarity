@@ -1,0 +1,35 @@
+# Starting point, not authority. Developer documentation: API docs, how-to guides, runbooks,
+# READMEs. Every setting names its source or says it is opinion. Sources are summarised in
+# research_notes/AI slop and writing rules/genre_conventions.md (Technical documentation) and
+# reports/AI slop and writing rules.md (Profiles should become section-aware). Edit it.
+#
+# Left at the bundled defaults on purpose:
+# - passive-agentless and the construction category: Google ("In general, use active voice") and
+#   Microsoft both default to active voice, so passive is not loosened here.
+# - long-sentence: Microsoft "Shorter is always better"; the old profile disabled it, which the
+#   guides do not support.
+name: technical
+description: API docs, how-to guides, runbooks, READMEs
+
+allowance_multiplier:
+  # Microsoft Writing Style Guide, top 10 tips: "Avoid jargon". Halves the corporate-vocabulary
+  # allowances (the AI-lexicon rules sit in this category too).
+  corporate-vocabulary: 0.5
+
+rule_override:
+  # Google developer documentation style guide, "Write inclusive documentation": simply, easily,
+  # quickly "introduce an opinion that might not reflect the user's experience". Off in the
+  # bundled pack. Info, with 1 per 1k free: on 87 to 200 human Stack Overflow answers it fired
+  # about as often as on AI answers, so it is a house-style rule here, not an AI sign.
+  - id: ease-words
+    enabled: true
+    severity: info
+    max_per_1k: 1
+  # Report, technical profile row: "acts as a proxy" and "serves as the entry point" are normal in
+  # technical usage, so copula inflation is a hint here, not a warning.
+  - id: copula-inflation
+    severity: info
+  # Microsoft top 10 tips: "Avoid weak phrasing like there is, there are, and there were".
+  # The bundled allowance is 2 per 1k; 1 is opinion.
+  - id: expletive-construction
+    max_per_1k: 1

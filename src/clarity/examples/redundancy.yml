@@ -5,6 +5,8 @@
 # against writing you consider good before trusting them, and see README "Recommended examples".
 rules:
   - id: sentence-restatement
+    description: "A sentence that repeats the one before it in fewer words. The reader reads the same point twice. It ships in the redundancy example set and is off by default."
+    remediation: "Keep the clearer of the two sentences and delete the other. \"The loader reads every rule file. The loader reads the rules.\" becomes \"The loader reads every rule file.\""
     category: redundancy
     backend: structural
     function: sentence_restatement
@@ -14,6 +16,8 @@ rules:
     message: Restates the sentence before it. Keep one.
     params: {jaccard: 0.5, idf_weighted: true, require_shorter_second: true, window: 2}
   - id: redundant-closer
+    description: "A short last sentence that adds almost nothing new to its paragraph, such as \"This means the nearest config wins\" after the lookup order was explained. It ships in the redundancy example set and is off by default."
+    remediation: "Delete the closer, or replace it with a new fact or the next step."
     category: redundancy
     backend: structural
     function: redundant_closer

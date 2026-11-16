@@ -1,4 +1,4 @@
-# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+# Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
 "rule": "long-sentence"
 "should_fire":
 - "The team shipped the build after the long review because the lead wanted every test to pass before\
@@ -58,3 +58,13 @@
 - "Short. A much longer sentence follows here with many words in a row to stretch it out. Tiny. Then another\
   \ long one rolls on past the first with even more words than before. Okay. Done and dusted for the day."
 ---
+---
+rule: stiff-synonym
+should_not_fire:
+  - "We use the cache for every request."
+  - "The utilities bill arrived."
+  - "The author of the report left."
+should_fire:
+  - "We utilize the cache for every request."
+  - "The meeting will commence at noon."
+  - "Her father passed away in 2001."

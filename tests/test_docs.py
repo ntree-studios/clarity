@@ -8,6 +8,7 @@ import yaml
 
 from clarity.config import ConfigError, load_config
 from clarity.fixtures import load_file
+from clarity.structure import SECTION_KEYS, from_tree
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = [ROOT / "README.md", *sorted((ROOT / "src" / "clarity" / "guides").glob("*.md"))]
@@ -30,6 +31,11 @@ def test_yaml_block_validates(block, tmp_path):
         found = load_file(path)
 
         assert found and found[0].fire and found[0].no_fire
+
+        return
+
+    if isinstance(data, dict) and set(data) <= set(SECTION_KEYS):
+        assert from_tree(data).parts  # a section tree, as in the Sections docs
 
         return
 

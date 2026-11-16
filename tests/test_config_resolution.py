@@ -1,6 +1,7 @@
 """Config discovery, per-key merging, profiles and load-time validation."""
 
 import json
+from pathlib import Path
 
 import pytest
 from test_cli import run
@@ -51,6 +52,40 @@ def test_explicit_config_bypasses_resolution(dirs, tmp_path):
 
     assert res.config.categories[8].weight == 9.0
     assert res.files == [str(only)]
+
+
+def test_explicit_config_layers_several_files_and_directories_in_order(dirs, tmp_path):
+    _, project, sub = dirs
+    write(project / "clarity.yml", "categories:\n  hedges: {weight: 5.0}\n")
+    first = tmp_path / "first.yml"
+    write(first, "categories:\n  hedges: {weight: 7.0}\n")
+    pack = tmp_path / "pack"
+    write(pack / "rules" / "a.yml", "rules:\n  - {id: corporate-tier-a, max_per_1k: 2}\n")
+    write(pack / "rules" / "b.yml", "rules:\n  - {id: em-dash, enabled: false}\n")
+    write(pack / "profiles" / "p.yml", "name: p\ndisable: [hedge]\n")
+    res = resolve([first, pack], sub, "p")
+    ids = {r.id for r in res.config.rules}
+
+    assert res.config.categories[8].weight == 7.0
+    assert rule(res, "corporate-tier-a").max_per_1k == 2
+    assert "em-dash" not in ids and "hedge" not in ids
+    assert [Path(f).name for f in res.files] == ["first.yml", "a.yml", "b.yml"]
+
+
+def test_missing_explicit_config_is_a_load_error(dirs, tmp_path):
+    _, _, sub = dirs
+
+    with pytest.raises(ConfigError, match=r"nope\.yml: config not found"):
+        resolve([tmp_path / "nope.yml"], sub)
+
+
+def test_cli_config_flag_repeats(dirs, tmp_path):
+    a, b = tmp_path / "a.yml", tmp_path / "b.yml"
+    write(a, "rules:\n  - {id: em-dash, enabled: false}\n")
+    write(b, "rules:\n  - {id: hedge, enabled: false}\n")
+    code, out, _ = run(["config", "--validate", "--config", str(a), "--config", str(b)])
+
+    assert code == 0 and out.startswith("ok:") and "2 files" in out
 
 
 def test_rules_merge_field_by_field_and_lists_edit_with_plus_and_minus(dirs):
@@ -118,15 +153,73 @@ def test_profile_flag_beats_the_config_key_and_none_disables(dirs):
     write(project / "profiles" / "p.yml", "name: p\ndisable: [em-dash]\n")
     write(project / "clarity.yml", "profile: p\n")
 
+    write(project / "profiles" / "q.yml", "name: q\ndisable: [hedge]\n")
+
     assert resolve(None, sub, "none").profile is None
-    assert resolve(None, sub, "fiction").profile.name == "fiction"
+    assert resolve(None, sub, "q").profile.name == "q"
 
 
 def test_unknown_profile_is_a_load_error_listing_what_exists(dirs):
+    home, project, sub = dirs
+    write(home / "profiles" / "mine.yml", "name: mine\n")
+    write(project / "profiles" / "theirs.yml", "name: theirs\n")
+
+    with pytest.raises(ConfigError, match=r"unknown profile 'nope'.*mine.*theirs"):
+        resolve(None, sub, "nope")
+
+
+def test_shipped_profiles_work_without_init(dirs):
     _, _, sub = dirs
 
-    with pytest.raises(ConfigError, match=r"unknown profile 'nope'.*academic.*technical"):
-        resolve(None, sub, "nope")
+    for name in ("technical", "business", "essay"):
+        res = resolve(None, sub, name)
+        assert res.profile.name == name
+        assert res.profile.path.endswith(f"examples/profiles/{name}.yml")
+
+
+def test_a_user_profile_replaces_the_shipped_one_of_the_same_name(dirs):
+    _, project, sub = dirs
+    write(project / "profiles" / "technical.yml", "name: technical\ndisable: [hedge]\n")
+    res = resolve(None, sub, "technical")
+
+    assert res.profile.path.endswith(".clarity/profiles/technical.yml")
+    assert "hedge" not in {r.id for r in res.config.rules}
+
+
+def test_builtin_false_drops_shipped_rules_and_profiles_but_keeps_settings(dirs):
+    _, project, sub = dirs
+    own = "builtin: false\nwatchlist:\n  - {term: synergy, max_per_1k: 0}\n"
+    write(project / "clarity.yml", own)
+    res = resolve(None, sub)
+
+    assert [r.id for r in res.config.rules] == ["synergy"]
+    assert res.profiles == {} and res.builtin is False
+    assert res.config.categories
+
+    with pytest.raises(ConfigError, match=r"unknown profile 'technical'.*none defined"):
+        resolve(None, sub, "technical")
+
+
+def test_builtin_must_be_a_boolean(dirs):
+    _, project, sub = dirs
+    write(project / "clarity.yml", "builtin: no-thanks\n")
+
+    with pytest.raises(ConfigError, match="builtin must be true or false"):
+        resolve(None, sub)
+
+
+def test_environment_supplies_config_and_profile_when_no_flag_does(dirs, tmp_path, monkeypatch):
+    _, project, sub = dirs
+    write(project / "clarity.yml", "categories:\n  hedges: {weight: 5.0}\n")
+    env_cfg = tmp_path / "env.yml"
+    write(env_cfg, "categories:\n  hedges: {weight: 6.0}\n")
+    monkeypatch.setenv("CLARITY_CONFIG", str(env_cfg))
+    monkeypatch.setenv("CLARITY_PROFILE", "essay")
+    res = resolve(None, sub)
+
+    assert res.config.categories[8].weight == 6.0
+    assert res.profile.name == "essay"
+    assert resolve(None, sub, "none").profile is None
 
 
 def test_rule_without_fixtures_is_refused_unless_experimental(dirs):
@@ -160,13 +253,14 @@ def test_experimental_rules_report_findings_but_are_not_scored(dirs, monkeypatch
 
 def test_output_names_the_configs_and_profile_loaded(dirs):
     _, project, sub = dirs
-    write(project / "clarity.yml", "profile: fiction\n")
+    write(project / "profiles" / "essay.yml", "name: essay\n")
+    write(project / "clarity.yml", "profile: essay\n")
     _, out, _ = run(["check", "-", "--fail-under", "0"], stdin="Plain text here.")
     data = json.loads(run(["check", "-", "--format", "json"], stdin="Plain text here.")[1])
 
-    assert "config: bundled" in out and "profile: fiction" in out
+    assert "config: bundled" in out and "profile: essay" in out
     assert data["config_sources"][0].endswith("clarity.yml")
-    assert data["profile"]["name"] == "fiction"
+    assert data["profile"]["name"] == "essay"
 
 
 def test_config_command_validates_and_explains(dirs):
@@ -186,6 +280,9 @@ def test_init_populates_the_user_directory_without_overwriting(dirs):
     _, out, _ = run(["init"])
 
     assert (home / "profiles" / "technical.yml").exists()
+    assert not (home / "rules" / "default.yml").exists()
+    assert (home / "rules" / "hedges.yml").exists()
+    assert (home / "rules" / "hedges.test.yml").exists()
     assert (home / "clarity.yml").read_text() == "# mine\n"
     assert "already present" in out
     assert main is not None
@@ -200,6 +297,9 @@ def test_example_rules_are_off_by_default_and_work_when_copied_into_a_config_fol
     assert not ids & {r.id for r in resolve(None, project).config.rules}
 
     for example in resources.files("clarity").joinpath("examples").iterdir():
+        if not example.is_file():
+            continue
+
         write(project / "rules" / example.name, example.read_text(encoding="utf-8"))
 
     assert ids <= {r.id for r in resolve(None, project).config.rules}
@@ -208,3 +308,24 @@ def test_example_rules_are_off_by_default_and_work_when_copied_into_a_config_fol
 
     assert code == 0
     assert "redundant-closer" in out and "0 failed" in out
+
+
+def test_init_split_keeps_every_bundled_rule_once():
+    from importlib import resources
+
+    import yaml
+
+    from clarity.config_cmds import split_rules_by_category
+
+    text = resources.files("clarity").joinpath("default.yml").read_text(encoding="utf-8")
+    bundled = [r["id"] for r in yaml.safe_load(text)["rules"]]
+    _, _, rules = text.partition("\nrules:\n")
+    split = split_rules_by_category(rules)
+    found = []
+
+    for category, body in split.items():
+        parsed = yaml.safe_load("rules:\n" + body)["rules"]
+        assert {r["category"] for r in parsed} == {category}
+        found += [r["id"] for r in parsed]
+
+    assert sorted(found) == sorted(bundled)

@@ -27,7 +27,7 @@ STRONG, NO_SIGNAL = 3.0, 1.5
 class Failure:
     kind: str
     number: int
-    text: str
+    text: str | dict[str, Any]
     matches: list[dict[str, Any]] = field(default_factory=list)
     reason: str = ""
 
@@ -53,11 +53,17 @@ def focus(rule: Rule, config: Config) -> Config:
     return replace(config, rules=[*[r for r in config.rules if r.id in needed], rule])
 
 
-def hits(rule: Rule, text: str, config: Config) -> list[dict[str, Any]]:
+def hits(rule: Rule, text: str | dict[str, Any], config: Config) -> list[dict[str, Any]]:
     """Findings of one rule on a text, including composites over the rules they read."""
-    found = analyze(text, config=focus(rule, config))["findings"]
+    # A marker rule is never reported, so its fixtures run it as a reported rule.
+    found = analyze(text, config=focus(replace(rule, marker=False), config))["findings"]
 
     return [f for f in found if f["rule"] == rule.id]
+
+
+def _shown(case: str | dict[str, Any]) -> str:
+    """A fixture case as printed in a failure: the text quoted, or the document as JSON."""
+    return f'"{case}"' if isinstance(case, str) else json.dumps(case, ensure_ascii=False)
 
 
 def _norm(text: str) -> str:
@@ -135,7 +141,7 @@ def _failure_text(rule: str, f: Failure) -> str:
         m = f.matches[0]
         return (
             f"  should_not_fire case {f.number} matched:\n"
-            f'    "{f.text}"\n'
+            f"    {_shown(f.text)}\n"
             f'    matched: "{m["text"]}"  at {m["line"]}:{m["col"]}\n'
             f"    rule:    {rule}\n\n"
             "    The fixture asserts this is acceptable usage. Either the fixture\n"
@@ -144,7 +150,7 @@ def _failure_text(rule: str, f: Failure) -> str:
 
     return (
         f"  should_fire case {f.number} failed: {f.reason}\n"
-        f'    "{f.text}"\n'
+        f"    {_shown(f.text)}\n"
         f"    rule:    {rule}\n\n"
         f'    Run: clarity explain {rule} "..." to see where the match breaks.'
     )
@@ -306,7 +312,7 @@ def _snapshot_findings(result: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def take_snapshot(path: Path, resolved: Resolved, stdout: TextIO) -> None:
-    """Record the findings that cost score as the baseline for a document."""
+    """Record the findings that lower the score as the baseline for a document."""
     text = path.read_text(encoding="utf-8")
     result = analyze(text, source=str(path), config=resolved.config)
     folder = snapshot_dir()

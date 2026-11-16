@@ -1,0 +1,97 @@
+# Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
+rule: number-anchor
+should_not_fire:
+  - "The river rose after the storm."
+  - "Prices went up."
+should_fire:
+  - "Prices rose 4 percent."
+  - "The mill closed in 1910."
+---
+rule: name-anchor
+should_not_fire:
+  - "The river rose after the storm."
+  - "Prices went up last year."
+should_fire:
+  - "The river rose after Maria Chen left."
+---
+rule: evaluative-word
+should_not_fire:
+  - "The river rose after the storm."
+  - "The key opens the door."
+should_fire:
+  - "Trust is crucial."
+  - "Teachers play a role in this."
+---
+rule: recap-opener
+should_not_fire:
+  - "The summary is on page two."
+  - "We ultimately chose the cheaper plan."
+should_fire:
+  - "In conclusion, the plan worked."
+  - "Overall, the results were mixed."
+---
+rule: balance-scaffold
+should_not_fire:
+  - "He held the cup in one hand."
+  - "Both teams scored."
+should_fire:
+  - "On the other hand, the cost is high."
+  - "There are pros and cons."
+---
+rule: recommendation-marker
+should_not_fire:
+  - "The river rose after the storm."
+  - "The team met on Monday."
+should_fire:
+  - "We recommend the smaller model."
+  - "Choose Postgres for this."
+---
+rule: vague-quantity
+should_not_fire:
+  - "The river rose after the storm."
+  - "Prices rose 4 percent."
+should_fire:
+  - "Prices rose significantly."
+  - "The new design improved load times."
+---
+rule: generic-paragraph
+should_not_fire:
+  - "Trust is crucial. Teachers in Leeds play a key role in building it."
+  - "Trust is crucial. In 2019, 40 percent of teachers reported a key role in building it."
+  - "Trust is crucial."
+  - "Community Engagement Is Crucial"
+should_fire:
+  - "Trust is crucial in education. Teachers play a key role in fostering it, and schools must ensure that every student feels valued."
+---
+rule: recap-closer
+should_not_fire:
+  - "In conclusion, the bridge opened in 1932 and carried 4,000 cars a day."
+  - "Overall, the results were mixed."
+  - "In Conclusion"
+should_fire:
+  - "In conclusion, community engagement plays a crucial role in the success of any project."
+---
+rule: comparison-no-verdict
+should_not_fire:
+  - "On the one hand, Postgres is mature. On the other hand, SQLite is simpler. We recommend SQLite for the prototype."
+  - "On the other hand, the cost is high."
+  - "Pros and Cons"
+should_fire:
+  - "On the one hand, Postgres is mature. On the other hand, SQLite is simpler. Both have their strengths, and the right choice depends on your needs."
+---
+rule: unquantified-claim
+should_not_fire:
+  - "The new cache cut load times by 40 percent."
+  - "Prices rose significantly, from 3 to 9 dollars."
+  - "Significant Results"
+should_fire:
+  - "The new cache significantly improved load times."
+  - "Numerous studies support the change."
+---
+rule: weak-title
+should_fire:
+- {document: {title: "Two data platform teams, one pricing problem"}}
+should_not_fire:
+- {document: {title: "Opening hours"}}
+- {document: {title: "Three teams, one shared vision"}}
+- {document: {title: "History of the old stone bridge"}}

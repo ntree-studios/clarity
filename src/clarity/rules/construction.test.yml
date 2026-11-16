@@ -1,4 +1,4 @@
-# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+# Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
 "rule": "passive-agentless"
 "should_fire":
 - "The build was broken."
@@ -59,3 +59,15 @@
 - "We can ship it."
 - "She did not leave."
 ---
+---
+rule: copula-inflation
+should_not_fire:
+  - "She served as treasurer for six years."
+  - "The waiter served the soup."
+  - "The museum has a large collection."
+  - "Serves as a Bridge"
+  - "The valve acts as a seal."
+should_fire:
+  - "The museum serves as a reminder of the war."
+  - "The town boasts a rich history."
+  - "It stands as a testament to the builders."

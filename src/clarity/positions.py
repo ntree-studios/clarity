@@ -11,7 +11,6 @@ from bisect import bisect_right
 from spacy.tokens import Doc, Span
 
 from clarity.clauses import Clause
-from clarity.markdown import paragraph_ranges
 from clarity.matchers.common import sentences
 
 
@@ -25,18 +24,18 @@ class Units:
     def __init__(
         self,
         doc: Doc,
-        text: str,
+        blocks: list[tuple[int, int]],
         sections: list[tuple[int, int]],
         clause_list: list[Clause],
     ) -> None:
         self.doc = doc
         self.sections = sections
         self.section_starts = [start for start, _ in sections]
-        self.paragraph_starts = [start for start, _ in paragraph_ranges(text)]
+        self.paragraph_starts = [start for start, _ in blocks]
         self.clause_initials = {c.first.i for c in clause_list}
         self.clause_of = {t.i: c.head.i for c in clause_list for t in c.tokens}
         self.final_sentences = self._final_sentences(doc, sections)
-        self.paragraph_final = self._final_sentences(doc, paragraph_ranges(text))
+        self.paragraph_final = self._final_sentences(doc, blocks)
 
     @staticmethod
     def _final_sentences(doc: Doc, sections: list[tuple[int, int]]) -> set[int]:

@@ -241,7 +241,7 @@ def inactive_reason(rule: Rule, analysis: Analysis) -> str | None:
 def allowance_override(
     rule: Rule, analysis: Analysis, over_categories: set[str]
 ) -> tuple[dict[str, Any], str] | None:
-    """The first allowance_when entry that holds: (new allowance field, why)."""
+    """The first allowance_when entry that is true: (new allowance field, why)."""
     for cond in rule.allowance_when:
         field_ = "max_per_1k" if rule.count_scope == "document" else "max_per_scope"
 

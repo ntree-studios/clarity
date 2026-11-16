@@ -29,7 +29,7 @@ The floor is 3.0. A rule under it is rejected by `write_rules` and is never writ
 
 ## Hits and documents
 
-A high rate from one document is one habit, not a pattern. Check `docs_hit`: a rule hitting 1 of
+A high rate from one document shows one writer's habit. Check `docs_hit`: a rule hitting 1 of
 30 bad documents is weak evidence even at a high ratio.
 
 ## Tuning a threshold

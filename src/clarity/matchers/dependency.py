@@ -6,7 +6,7 @@ from typing import Any
 
 from spacy.language import Language
 from spacy.matcher import DependencyMatcher
-from spacy.tokens import Doc
+from spacy.tokens import Doc, Token
 
 from clarity.animacy import is_animate
 from clarity.config import Rule
@@ -84,13 +84,42 @@ def _bases(word: str) -> set[str]:
     return out
 
 
-# Without coreference these say nothing about animacy: "It said to do it" has no inanimate noun.
+# Without coreference these give no evidence of animacy: "It said to do it" has no inanimate noun.
 UNRESOLVED_PRONOUNS = {"it", "this", "that", "which", "what", "there"}
+
+
+def _unresolved(token: Token, rule: Rule) -> bool:
+    """A pronoun with no antecedent, read as inanimate and abstract when the rule asks for it.
+
+    params.unresolved_inanimate lists the pronouns ([this, that] makes "This holds" count; adding
+    it makes "It serves as a reminder" count). true means every unresolved pronoun.
+    """
+    words = rule.params.get("unresolved_inanimate")
+    listed = UNRESOLVED_PRONOUNS if words is True else set(words or ())
+
+    return token.lower_ in listed
+
+
+def _exempt(doc: Doc, rule: Rule, names: list[str], ids: list[int]) -> bool:
+    """params.exempt: lemmas that clear a match at any node but the verb ("the variable holds",
+    but not "this maps to our goals")."""
+    exempt = rule.params.get("exempt")
+
+    if not exempt:
+        return False
+
+    words = set(exempt)
+    args = [i for name, i in zip(names, ids, strict=True) if name != "verb"]
+
+    return any({doc[i].lemma_.lower(), doc[i].lower_} & words for i in args)
 
 
 def _skip(doc: Doc, rule: Rule, names: list[str], ids: list[int]) -> bool:
     """Apply the rule's subject filters, animacy predicate and exclusions."""
     params = rule.params
+
+    if _exempt(doc, rule, names, ids):
+        return True
 
     if "subjects" in params or "exclude" in params or params.get("require_inanimate"):
         subj = doc[ids[names.index("subj")]]
@@ -101,7 +130,7 @@ def _skip(doc: Doc, rule: Rule, names: list[str], ids: list[int]) -> bool:
         if "subjects" in params and not forms & set(params["subjects"]):
             return True
 
-        if params.get("require_inanimate") and (
+        if params.get("require_inanimate") and not _unresolved(subj, rule) and (
             is_animate(subj) or subj.lower_ in UNRESOLVED_PRONOUNS
         ):
             return True
@@ -117,12 +146,23 @@ def _too_concrete(doc: Doc, rule: Rule, names: list[str], ids: list[int]) -> boo
     if rule.concreteness_max is None:
         return False
 
+    if rule.anchor is not None and rule.anchor not in names:
+        return False  # a pattern without the anchor node is a fixed shape, not gated
+
     idx = _anchor_index(rule, names)
 
     if idx is None:
         return True
 
-    score = concreteness_of(doc[ids[idx]])
+    token = doc[ids[idx]]
+
+    if _unresolved(token, rule):
+        return False
+
+    if is_animate(token):
+        return True  # a person or group is never the abstract argument ("He does the work")
+
+    score = concreteness_of(token)
 
     return score is None or score >= rule.concreteness_max
 

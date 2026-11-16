@@ -1,10 +1,11 @@
-# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+# Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
 "rule": "rule-of-three"
 "should_fire":
-- "It is faster, cheaper, and more reliable."
-- "We need speed, scale, and safety."
-- "The plan is simple, clear, and bold."
+- "It is faster, cheaper, and more reliable. The plan is simple, clear, and bold."
+- "We need real speed, wider scale, and better safety. The launch is quiet, careful, and slow."
 "should_not_fire":
+- "It is faster, cheaper, and more reliable."
+- "Track it by store, aisle, and shelf. Report it by region, month, and team."
 - "It is fast and cheap."
 - "Ana and Ben went home."
 - "The dog barked."
@@ -59,3 +60,76 @@
 - "Sales rose from 2021 to 2022."
 - "He left quickly, then returned."
 ---
+---
+rule: engagement-bait
+should_not_fire:
+  - "Whether to ship on Friday is still open."
+  - "Read the manual again before you start."
+  - "The Kicker"
+should_fire:
+  - "Nobody checked the logs for a month. Let that sink in."
+  - "In today's fast-paced world, teams need dashboards."
+  - "Whether you're a beginner or an expert, this guide helps."
+---
+rule: trailing-negation
+should_not_fire:
+  - "Use a queue instead of a cron job."
+  - "He was, not surprisingly, late, and we waited."
+  - "She left, never to return."
+  - "The server is not running."
+  - "It was not only cheap but also fast."
+  - "She is not just a manager but a mentor."
+  - "We will ship on Friday, not least because the client asked."
+  - "Whether or not it rains, the market opens at nine."
+  - "The parser does not handle tabs, so convert them first."
+  - "Not every test passed."
+  - "The resolution of microtomography is not enough, but synchrotron tomography can image the pores."
+  - "The mechanism is not completely understood, but is clearly important."
+should_fire:
+  - "The cache sits beside the database, not in its path, so reads stay fast."
+  - "The model suggests, never decides the outcome."
+  - "The team reviews instead of rewriting."
+  - "Technology has changed the shape of children's creativity, not reduced it."
+  - "It isn't about speed, it's about trust."
+  - "The problem is not technology in itself but the way it is used."
+  - "They failed not because they lacked ability but because nobody trained them."
+  - "Good onboarding is a process, not an event."
+---
+rule: stock-title-shape
+should_fire:
+- {document: {title: "Three teams, one shared vision"}}
+- {document: {title: "Pricing: simple plans, built for growth"}}
+- {document: {title: "What we learned, and why it counts"}}
+- {document: {title: "Four steps, each one building on the last"}}
+- {document: {title: "Two teams. One goal."}}
+- {document: {title: "Three teams; one shared vision"}}
+- {document: {title: "Plan every visit. Across every site."}}
+- {document: {title: "What the survey found."}}
+should_not_fire:
+- {document: {title: "History of the bridge"}}
+- {document: {title: "Opening hours"}}
+- {document: {title: "Lessons from the 2019 flood"}}
+- {document: {title: "How the bridge was built"}}
+- {document: {title: "St. Louis and the river trade"}}
+- {document: {title: "Results", text: "Two teams, one goal, and what it means for us all."}}
+---
+rule: count-noun-title
+should_fire:
+- {document: {title: "Ten topics"}}
+- {document: {title: "Ten topics."}}
+- {document: {title: "Three key risks"}}
+- {document: {title: "Opening hours", subtitle: "Two locations"}}
+should_not_fire:
+- {document: {title: "Ten topics we cover in the session"}}
+- {document: {title: "Seven Years' War"}}
+- {document: {title: "History of the bridge"}}
+- {document: {title: "2019 season results and awards"}}
+- "Ten topics."
+---
+rule: count-noun-fragment
+should_fire:
+- "There are two ways to fix this. Two reasons. First, the cache is cold."
+should_not_fire:
+- "Two reasons explain the delay."
+- {document: {title: "Ten topics"}}
+- {document: {title: "Recipe", items: ["Two eggs.", "One cup of flour."]}}

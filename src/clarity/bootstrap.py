@@ -29,7 +29,6 @@ from clarity.harness import check_fire, focus, hits
 from clarity.metrics import load_registry
 from clarity.resolve import (
     Resolved,
-    discover_profiles,
     explain,
     find_project_dir,
     resolve,
@@ -587,9 +586,7 @@ def categories() -> list[dict[str, Any]]:
 
 
 def profiles() -> list[dict[str, str]]:
-    found = discover_profiles(_resolved().folders)
-
-    return [{"name": p.name, "path": p.path} for p in found.values()]
+    return [{"name": p.name, "path": p.path} for p in _resolved().profiles.values()]
 
 
 FLOORS = {
