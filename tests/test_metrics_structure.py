@@ -4,13 +4,19 @@ import pytest
 
 from clarity.config import load_config
 from clarity.engine import analyze
-from clarity.markdown import parse
 from clarity.metrics import REGISTRY, Analysis, get_at, scalars
 from clarity.nlp import get_nlp
+from clarity.structure import from_tree, parse_doc
 
 
-def a(text: str, raw: str | None = None) -> Analysis:
-    return Analysis(get_nlp()(text), text, raw or text)
+def a(text: str) -> Analysis:
+    return Analysis(get_nlp()(text), text)
+
+
+def tree(t: dict) -> Analysis:
+    s = from_tree(t)
+
+    return Analysis(parse_doc(get_nlp(), s), s.text, structure=s)
 
 
 def test_sentence_types_follow_independent_and_dependent_clauses():
@@ -72,25 +78,24 @@ def test_hapax_and_pronoun_antecedent_distance():
     assert near["mean"] == 3 and near["unresolved"] == 0
 
 
-def test_markdown_model_keeps_levels_lists_fences_and_links():
-    model = parse(
-        "# A\n\n### B\n\n- x\n- y\n\n```py\ncode\n```\n\nSee [docs](http://d.io) and http://e.io.\n"
-    )
-
-    assert [h.level for h in model.headings] == [1, 3]
-    assert [len(b.items) for b in model.lists] == [2]
-    assert len(model.fences) == 1 and len(model.links) == 2
-
-
-def test_document_structure_metrics():
-    raw = "# A\n\n### B\n\nBody.\n\n## C\n\n## D\n\nText.\n\n- Fix it\n- Fixing it\n"
-    an = a(raw)
+def test_document_structure_metrics_read_the_tree():
+    an = tree({"title": "A", "sections": [
+        {"sections": [{"title": "B", "text": "Body."}]},
+        {"title": "C"},
+        {"title": "D", "text": "Text.", "items": ["Fix it", "Fixing it"]},
+    ]})  # fmt: skip
 
     assert an.get("heading_hierarchy")["skipped_levels"] == 1
+    assert an.get("heading_hierarchy")["single_child"] == 1
     assert an.get("heading_hierarchy")["empty"] == 1
     assert an.get("list_parallelism")["mismatched"] == 1
-    assert a("Run `x` now.\n\n```\nabc\n```\n").get("code_prose_ratio")["code_chars"] > 0
-    assert a("See [a](http://a.io) and [b](http://b.io).").get("link_density")["links"] == 2
+
+
+def test_markdown_in_a_plain_string_is_plain_text():
+    an = a("# A\n\n- x\n- y\n")
+
+    assert an.get("heading_hierarchy")["headings"] == 0
+    assert an.get("list_parallelism")["lists"] == 0
 
 
 def test_a_metric_can_be_read_over_one_paragraph_but_not_where_unsupported():

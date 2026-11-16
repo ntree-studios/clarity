@@ -1,4 +1,4 @@
-# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+# Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
 "rule": "sig-noun-phrase"
 "should_fire":
 - "The key point is that we shipped."
@@ -25,3 +25,39 @@
 - "The question was whether it works."
 - "What the committee decided was kept private."
 - "She asked what the answer to the riddle was."
+---
+rule: salience-frame
+should_not_fire:
+  - "This matter was settled in court."
+  - "It matters to the people who live there."
+  - "Why Rivers Flood"
+should_fire:
+  - "Here is why this matters for the budget."
+  - "The tell is the error rate."
+  - "The whole point is that nobody reads the logs."
+---
+rule: participial-tail
+should_not_fire:
+  - "He left the room, slamming the door."
+  - "The river rose three feet, flooding the lower town."
+  - "Highlighting the Importance of Sleep"
+  - "Contributing factors are listed in the appendix."
+should_fire:
+  - "The mill closed in 1910, marking the end of an era."
+  - "Exports grew by 4 percent, highlighting the importance of trade."
+  - "The festival draws large crowds, underscoring its role in the town."
+---
+rule: what-matters
+should_not_fire:
+  - "Legal matters are handled by the general counsel."
+  - "To make matters worse, the backup failed."
+  - "It matters to the people who live there."
+  - "No matter what you choose, test it first."
+  - "The board discussed several matters at the meeting."
+should_fire:
+  - "Ship the fixes that matter most."
+  - "What matters is the error rate."
+  - "What really matters is whether customers come back."
+  - "Consistency matters more than intensity."
+  - "The test suite is slow. This matters."
+  - "In the end, that is all that matters."

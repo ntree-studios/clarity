@@ -7,6 +7,10 @@ it leaves normal prose alone.
       - {text: "The simple answer is no.", expect: {count: 1, span: "The simple answer"}}
     should_not_fire:
       - "The honest broker in the deal was the escrow agent."
+      - {document: {title: "Overview", text: "The broker held the deposit."}}
+
+A case is a string, {text, expect}, or {document, expect} where document is a section tree
+(see clarity.structure).
 
 A file may hold several YAML documents, one per rule. The file stem is the group name.
 """
@@ -28,7 +32,7 @@ MIN_NO_FIRE = 2
 
 @dataclass
 class Case:
-    text: str
+    text: str | dict[str, Any]
     count: int | None = None
     span: str | None = None
 
@@ -46,16 +50,19 @@ def parse_case(raw: Any, where: str) -> Case:
     if isinstance(raw, str):
         return Case(raw)
 
-    if isinstance(raw, dict) and isinstance(raw.get("text"), str):
+    body = raw.get("text") if isinstance(raw, dict) else None
+    body = raw.get("document") if isinstance(raw, dict) and body is None else body
+
+    if isinstance(body, str | dict):
         expect = raw.get("expect") or {}
         unknown = set(expect) - {"count", "span"}
 
         if unknown:
             raise ConfigError(f"{where}: unknown expect keys {sorted(unknown)}")
 
-        return Case(raw["text"], expect.get("count"), expect.get("span"))
+        return Case(body, expect.get("count"), expect.get("span"))
 
-    raise ConfigError(f"{where}: a case is a string or {{text, expect}}")
+    raise ConfigError(f"{where}: a case is a string, {{text, expect}} or {{document, expect}}")
 
 
 def load_file(path: Path) -> list[RuleFixtures]:
@@ -86,18 +93,21 @@ def load_file(path: Path) -> list[RuleFixtures]:
     return found
 
 
-def fixture_files(folders: list[Path]) -> list[Path]:
+def fixture_files(folders: list[Path], extra: list[Path] | None = None) -> list[Path]:
+    """Bundled fixtures, then rules/*.test.yml in each folder, then extra files (an active
+    profile's fixtures)."""
     bundled = Path(str(resources.files("clarity").joinpath("rules")))
     roots = [bundled, *[f / "rules" for f in folders]]
+    found = [p for root in roots if root.is_dir() for p in sorted(root.glob("*.test.yml"))]
 
-    return [p for root in roots if root.is_dir() for p in sorted(root.glob("*.test.yml"))]
+    return [*found, *(extra or [])]
 
 
-def load_index(folders: list[Path]) -> dict[str, RuleFixtures]:
+def load_index(folders: list[Path], extra: list[Path] | None = None) -> dict[str, RuleFixtures]:
     """Fixtures by rule id; several files for one rule are combined."""
     index: dict[str, RuleFixtures] = {}
 
-    for path in fixture_files(folders):
+    for path in fixture_files(folders, extra):
         for item in load_file(path):
             if item.rule in index:
                 known = index[item.rule]

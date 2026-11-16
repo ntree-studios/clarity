@@ -1,4 +1,4 @@
-# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+# Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
 "rule": "corporate-tier-a"
 "should_fire":
 - "We leverage a robust platform."
@@ -63,3 +63,39 @@
 - "Costs fall."
 - "Costs rise."
 - "Prices and costs vary."
+---
+rule: ai-lexicon-gpt4
+should_not_fire:
+  - "The report covers the budget and the schedule."
+  - "We looked into the logs."
+  - "Methods and Results"
+should_fire:
+  - "This essay delves into the history of the port."
+  - "The intricate interplay of policy and trade is pivotal."
+---
+rule: ai-lexicon-gpt4o
+should_not_fire:
+  - "The highlights of the season were on television."
+  - "The new policy is in line with the old one."
+  - "Highlights"
+should_fire:
+  - "The study highlights the need for funding."
+  - "The program fosters collaboration and enhances trust."
+  - "These goals align with our mission."
+---
+rule: ai-lexicon-gpt5
+should_not_fire:
+  - "The band has an active fan club in Ohio."
+  - "Coverage of the trial was independent of the court."
+  - "Media Coverage"
+should_fire:
+  - "She maintains an active social media presence."
+  - "The startup has received independent media coverage."
+---
+rule: ai-lexicon-2026
+should_not_fire:
+  - "The rain fell all night."
+  - "We set the priority of each ticket."
+  - "Steps to Install"
+should_fire:
+  - "The team quietly shipped a dependable fix."

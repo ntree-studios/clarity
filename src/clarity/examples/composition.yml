@@ -3,6 +3,8 @@
 # other rules in one scope, so one compound tell is one finding with the members as children.
 rules:
   - id: hedged-intensifier
+    description: "A sentence that both hedges and intensifies, as in \"arguably a genuinely good plan\". The two cancel out, and the reader cannot tell how sure the writer is. It ships in the composition example set and is off by default."
+    remediation: "Pick one level of certainty and back it with a fact. \"This is arguably a genuinely good plan\" becomes \"This plan meets the budget and the deadline.\""
     category: composite
     backend: composite
     count_scope: sentence
@@ -14,6 +16,8 @@ rules:
       - rule: intensifier
     note: hedging and intensifying in one sentence cancel each other out
   - id: filler-plus-significance
+    description: "A paragraph with both a filler transition such as \"that said\" and a significance phrase such as \"the key part is\". Together they pad the paragraph with talk about the content. It ships in the composition example set and is off by default."
+    remediation: "Remove both and start each sentence with the content. \"That said, the key part is the rollback\" becomes \"Test the rollback before Friday.\""
     category: composite
     backend: composite
     count_scope: paragraph

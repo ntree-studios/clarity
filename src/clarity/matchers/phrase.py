@@ -28,7 +28,9 @@ def build_matcher(nlp: Language, rule: Rule) -> Matcher:
     matcher = Matcher(nlp.vocab)
 
     if rule.pattern:
-        matcher.add(rule.id, [rule.pattern])
+        # One token pattern, or a list of them when the first item is itself a list.
+        several = isinstance(rule.pattern[0], list)
+        matcher.add(rule.id, rule.pattern if several else [rule.pattern])
 
     patterns = [compile_phrase(nlp, p, rule.match) for p in rule.phrases]
     # Hyphenated and capitalized fixed phrases lemmatize differently alone and in context.

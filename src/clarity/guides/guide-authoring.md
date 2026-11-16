@@ -2,14 +2,15 @@
 
 ## How a rule runs
 
-1. The text is masked: code fences, tables, inline code, URLs, HTML and markdown markers are
-   blanked so they are not read as prose.
+1. The input is a plain string (one section) or a section tree (`clarity://guide/document`).
+   Every title, subtitle, paragraph and item starts its own sentence. Markdown is not read: `#`
+   lines and list markers are ordinary text.
 2. The backend finds matches.
 3. `position` filters matches. A match failing the position test is not a finding and uses no
    allowance.
 4. Matches are counted in units set by `count_scope`.
-5. Matches beyond the allowance are over allowance and cost score. Matches within it are reported
-   but free.
+5. Matches beyond the allowance are over allowance and lower the score. Matches within it are reported
+   but free. Allowances apply to each section on its own.
 
 ## Choosing a backend
 
@@ -24,11 +25,11 @@ Start with `phrase`. A word list measured against both corpora is the cheapest h
 ## Scopes and allowances
 
 `count_scope: document` uses `max_per_1k`. Other scopes use `max_per_scope`. An allowance of 0
-means every match costs score. Use a positive allowance for habits that are fine in moderation.
+means every match lowers the score. Use a positive allowance for habits that are fine in moderation.
 
-`section` scope and `position: section-final` need markdown headings; on plain text those rules
-are disabled and the report says so. `paragraph-final` and `count_scope: paragraph` use blank-line
-separated blocks.
+`section` scope and `position: section-final` need a section tree; on a plain string those rules
+are disabled and the report lists them. `paragraph-final` and `count_scope: paragraph` use each
+paragraph of a section's text and each item.
 
 ## Severity and confidence
 

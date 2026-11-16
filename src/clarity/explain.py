@@ -11,9 +11,11 @@ from clarity.engine import analyze
 from clarity.harness import focus
 from clarity.nlp import get_nlp
 from clarity.resolve import Resolved
+from clarity.structure import coerce, parse_doc
 
 TICK, CROSS = "✓", "✗"
 LIST_SHOWN = 4
+SPAN_SHOWN = 80
 
 
 def _listed(values: list[Any]) -> str:
@@ -103,11 +105,47 @@ def _composition_lines(rule: Rule, trace: dict[str, Any]) -> list[str]:
     return out or ["  no member rule matched anywhere"]
 
 
-def explain(rule: Rule, text: str, resolved: Resolved) -> str:
-    doc = get_nlp()(text)
+def _query_lines(rule: Rule, text: str | dict[str, Any], resolved: Resolved) -> list[str]:
+    """Each record of a query rule's set with its fields, and the first condition it failed."""
+    from clarity import records
+    from clarity.engine import parse
+    from clarity.matchers.structural import _holds
+
+    p = rule.params
+    rows, summary = records.fetch(parse(text, resolved.config), p["records"], p.get("topics"))
+    fields = [f.name for f in records.REGISTRY[p["records"]].fields]
+    where = p.get("where") or []
+    gate = p.get("requires")
+    shown = ", ".join(f"{k}={records.shown(v)}" for k, v in summary.items())
+    out = [f"  {p['records']}: {len(rows)} records · {shown}"]
+
+    if gate:
+        ok = _holds(summary, gate)
+        out.append(f"  requires {gate} {TICK if ok else CROSS}")
+
+    for r in rows:
+        ok = records.matches(r, where, p.get("match", "all"))
+        values = ", ".join(f"{k}={records.shown(records.value(r, k))}" for k in fields
+                           if records.value(r, k) not in (None, [], {}))  # fmt: skip
+        out.append(f"  line {r['line']}: {TICK if ok else CROSS} {values}")
+        failed = None if ok else records.first_failure(r, where)
+
+        if failed:
+            have = records.shown(records.value(r, failed["field"]))
+            out.append(f"      failed: {records.describe(failed)} (has {have})")
+
+    return out
+
+
+def explain(rule: Rule, text: str | dict[str, Any], resolved: Resolved) -> str:
+    """How a rule reads one text or section tree: tokens, pattern steps, records and matches."""
+    doc = parse_doc(get_nlp(), coerce(text))
     result = analyze(text, config=focus(rule, resolved.config), trace=True)
     found = [f for f in result["findings"] if f["rule"] == rule.id]
-    lines = [f"{rule.id} · backend: {rule.backend}", ""]
+    lines = [f"{rule.id} · backend: {rule.backend}"]
+    lines += [f"  {label}: {text}" for label, text in
+              (("what", rule.description), ("fix", rule.remediation)) if text]  # fmt: skip
+    lines.append("")
     marks: dict[int, str] = {}
     verdict = ""
 
@@ -124,16 +162,23 @@ def explain(rule: Rule, text: str, resolved: Resolved) -> str:
         elif len(steps) < len(rule.pattern):
             verdict = "NO MATCH · the text ends before the pattern does"
 
-    for tok in doc:
+    for tok in doc if rule.function != "query" else []:  # a query reads records, not tokens
         mark = marks.get(tok.i, "")
         lines.append(f"  {tok.text:<14}{tok.pos_:<8}{tok.dep_:<10}{mark}".rstrip())
 
     lines.append("")
     lines += _composition_lines(rule, result["trace"])
 
+    if rule.function == "query":
+        lines += _query_lines(rule, text, resolved)
+
     if found:
         for f in found:
-            lines.append(f'  MATCH at {f["line"]}:{f["col"]} "{f["span"]["text"]}"')
+            shown = " ".join(f["span"]["text"].split())
+            shown = shown if len(shown) <= SPAN_SHOWN else shown[: SPAN_SHOWN - 3] + "..."
+            tree = isinstance(text, dict)
+            where = f'section {f["section"] or "(root)"} {f["field"]} ' if tree else ""
+            lines.append(f'  MATCH at {where}{f["line"]}:{f["col"]} "{shown}"')
     else:
         lines.append(f"  {verdict or 'NO MATCH'}")
 

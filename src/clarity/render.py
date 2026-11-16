@@ -73,9 +73,38 @@ def _tag(f: dict[str, Any]) -> str:
     return str(f["rule"])
 
 
+def _is_tree(section: dict[str, Any] | None) -> bool:
+    """The input was a section tree: the root has a title, an id or child sections."""
+    return section is not None and any(section.get(k) for k in ("title", "id", "sections"))
+
+
+def _where(f: dict[str, Any]) -> str:
+    """line:col, prefixed by the section path and field when the input was a section tree."""
+    pos = f"{f['line']}:{f['col']}"
+
+    if f.get("section") or f.get("field", "text") != "text":
+        return f"{f.get('section') or '-'} {f['field']} {pos}"
+
+    return pos
+
+
+def _sections_block(section: dict[str, Any], depth: int = 0) -> list[str]:
+    """One row per section: path, title, own score, rollup score and words, indented by depth."""
+    label = ("  " * depth + (section["path"] or "-") + "  " + (section.get("title") or ""))[:44]
+    rollup = section["rollup"]
+    row = (f"  {label:<46}score {section['score']:<6g} rollup {rollup['score']:<6g}"
+           f"{section['words']} words")  # fmt: skip
+    out = [row]
+
+    for child in section["sections"]:
+        out += _sections_block(child, depth + 1)
+
+    return out
+
+
 def _finding_lines(f: dict[str, Any], color: bool) -> list[str]:
     mark, style = _marker(f)
-    pos = f"{f['line']}:{f['col']}"
+    pos = _where(f)
     snippet, tag = f"{_snippet(f):<{SNIPPET_WIDTH}}", f"{_tag(f):<{TAG_WIDTH}}"
     gap = " " * (1 if len(pos) >= POS_WIDTH else 0)
     lines = [f"  {paint(mark, style, color)}  {pos:<{POS_WIDTH}}{gap}{snippet}{tag}[{f['id'][:6]}]"]
@@ -204,20 +233,22 @@ def _score_block(result: dict[str, Any], fail_under: float) -> list[str]:
 
 
 def _footer(result: dict[str, Any]) -> list[str]:
-    findings = result["findings"]
+    findings = [f for f in result["findings"] if not f.get("experimental")]
+    trial = len(result["findings"]) - len(findings)
     within = sum(1 for f in findings if not f["over_allowance"])
     exact = sum(1 for f in findings if f["over_allowance"] and f["confidence"] == "exact")
     inferred = sum(1 for f in findings if f["over_allowance"] and f["confidence"] == "inferred")
     out = [
-        f"{len(findings)} findings · {len(findings) - within} over allowance · {within} within",
+        f"{len(findings)} findings · {len(findings) - within} over allowance · {within} within"
+        + (f" · {trial} experimental" if trial else ""),
         f"{EXACT_OVER} exact ({exact})   {INFERRED_OVER} inferred ({inferred})   "
         f"{WITHIN} within allowance ({within})",
         "",
         "Filter to exact only:  clarity check --min-confidence exact",
     ]
 
-    if findings:
-        out.append(f"Accept a finding:      clarity accept {findings[0]['id'][:6]}")
+    if result["findings"]:
+        out.append(f"Accept a finding:      clarity accept {result['findings'][0]['id'][:6]}")
 
     return out
 
@@ -229,16 +260,30 @@ def render_text(result: dict[str, Any], source: str, color: bool, fail_under: fl
 
     if result.get("disabled_rules"):
         names = ", ".join(d["rule"] for d in result["disabled_rules"])
-        out += [f"notice: no markdown headings, so these section rules are disabled: {names}", ""]
+        out += [f"notice: plain text has no sections, so these section rules are off: {names}", ""]
 
     by_cat: dict[str, list[dict[str, Any]]] = {}
+    trial = [f for f in result["findings"] if f.get("experimental")]
 
     for f in result["findings"]:
-        by_cat.setdefault(f["category"], []).append(f)
+        if not f.get("experimental"):
+            by_cat.setdefault(f["category"], []).append(f)
 
     for cat in result["categories"]:
         if cat["found"]:
             out.extend(_category_block(cat, by_cat.get(cat["id"], []), color))
+
+    if trial:
+        title = f"{'EXPERIMENTAL (reported, unscored)':<{CATEGORY_WIDTH}}{len(trial)} found"
+        out.append(paint(title, "bold", color))
+
+        for f in trial:
+            out.extend(_finding_lines({**f, "over_allowance": False}, color))
+
+        out.append("")
+
+    if _is_tree(result.get("section")):
+        out += [paint("SECTIONS", "bold", color), *_sections_block(result["section"]), ""]
 
     out += _score_block(result, fail_under)
     out += ["", *_readability_block(result["readability"])]

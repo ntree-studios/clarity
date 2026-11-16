@@ -82,10 +82,11 @@ def test_sentence_final_keeps_the_last_content_token():
 
 
 def test_section_final_keeps_matches_inside_the_last_sentence_of_a_section():
-    text = "# A\n\nWe are really done. Next thing.\n\n# B\n\nMore text, really done here."
-    found = mine(run(text, position="section-final"))
+    doc = {"sections": [{"title": "A", "text": "We are really done. Next thing."},
+                        {"title": "B", "text": "More text, really done here."}]}  # fmt: skip
+    found = mine(run(doc, position="section-final"))
 
-    assert [f["line"] for f in found] == [7]
+    assert [(f["section"], f["field"], f["line"]) for f in found] == [("1", "text", 1)]
 
 
 def test_a_match_failing_the_position_test_does_not_consume_allowance():
@@ -126,9 +127,10 @@ def test_paragraph_scope_allowance_is_per_blank_line_block():
     assert [f["over_allowance"] for f in mine(result)] == [False, False, True]
 
 
-def test_section_scope_allowance_is_per_heading_block():
-    text = "# A\n\nReally fine. Really green.\n\n# B\n\nReally done."
-    result = run(text, count_scope="section", max_per_scope=1)
+def test_section_scope_allowance_is_per_section():
+    doc = {"sections": [{"title": "A", "text": "Really fine. Really green."},
+                        {"title": "B", "text": "Really done."}]}  # fmt: skip
+    result = run(doc, count_scope="section", max_per_scope=1)
 
     assert [f["over_allowance"] for f in mine(result)] == [False, True, False]
 
@@ -149,15 +151,21 @@ def test_plain_text_disables_section_rules_and_says_so():
     disabled = {d["rule"]: d["reason"] for d in result["disabled_rules"]}
 
     assert {"section-restatement", "it-depends-conclusion"} <= set(disabled)
-    assert "heading" in disabled["it-depends-conclusion"]
+    assert "section tree" in disabled["it-depends-conclusion"]
     assert not [f for f in result["findings"] if f["rule"] == "it-depends-conclusion"]
 
 
-def test_markdown_headings_keep_section_rules_active():
-    result = analyze("# Choice\n\nPick tools. It depends.")
+def test_a_section_tree_keeps_section_rules_active():
+    result = analyze({"title": "Choice", "text": "Pick tools. It depends."})
 
     assert result["disabled_rules"] == []
     assert [f for f in result["findings"] if f["rule"] == "it-depends-conclusion"]
+
+
+def test_markdown_headings_in_a_plain_string_are_plain_text():
+    result = analyze("# Choice\n\nPick tools. It depends.")
+
+    assert {d["rule"] for d in result["disabled_rules"]} >= {"it-depends-conclusion"}
 
 
 def test_paragraph_final_position_keeps_only_the_last_sentence_of_each_paragraph():
@@ -190,3 +198,41 @@ def test_two_hedges_in_one_clause_cost_score_but_one_does_not():
         False,
         True,
     ]
+
+
+# ---- applies_to ---------------------------------------------------------------------------
+
+
+def test_applies_to_limits_a_rule_to_the_fields_it_names():
+    doc = {"title": "Really done", "text": "It is really fine.", "items": ["Really good"]}
+    fields_ = {f["field"] for f in mine(run(doc))}
+    only_text = {f["field"] for f in mine(run(doc, applies_to=["text"]))}
+    only_titles = {f["field"] for f in mine(run(doc, applies_to=["title"]))}
+
+    assert fields_ == {"title", "text", "items[0]"}
+    assert (only_text, only_titles) == ({"text"}, {"title"})
+
+
+def test_applies_to_must_name_known_fields():
+    with pytest.raises(ConfigError, match="applies_to"):
+        load_config(text=rule_yaml(applies_to=["heading"]))
+
+    with pytest.raises(ConfigError, match="applies_to"):
+        load_config(text=rule_yaml(applies_to=[]))
+
+
+@pytest.mark.parametrize("title", [
+    "Three teams, one shared vision",
+    "Roadmap: four steps, each one building on the last",
+    "What we found, and why it counts",
+])  # fmt: skip
+def test_sentence_rules_skip_a_title_checked_alone(title):
+    from clarity.config import load_config as bundled
+
+    cfg = bundled(None)
+    text_only = {r.id for r in cfg.rules if r.applies_to == ["text"]}
+    found = analyze({"title": title}, config=cfg)["findings"]
+
+    assert {"long-sentence", "fragment-triad", "comma-splice"} <= text_only
+    assert not [f for f in found if f["rule"] in text_only]
+    assert all(f["field"] == "title" for f in found)

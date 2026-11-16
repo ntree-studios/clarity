@@ -36,7 +36,7 @@ def wordnet_animate(lemma: str) -> bool:
 
 
 def _acronym(token: Token) -> bool:
-    """API, SQL, CPU: capitalized tokens that name things, not people."""
+    """API, SQL, CPU: capitalized tokens for things rather than people."""
     return len(token.text) > 1 and token.text.isupper()
 
 
@@ -61,7 +61,7 @@ ORG_ACRONYMS = {
 def _is_org_acronym(token: Token) -> bool:
     """All-caps tokens are agents only when they are a known organization.
 
-    spaCy tags API, SQL and AWS as ORG, but they name things, not actors. An acronym passes when
+    spaCy tags API, SQL and AWS as ORG, but they are things that cannot act. An acronym passes when
     WordNet resolves it to an animate lineage (FBI, NASA, NATO) or it is on the short allowlist.
     """
     word = token.text.lower()

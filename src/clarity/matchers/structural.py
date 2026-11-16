@@ -15,6 +15,7 @@ from spacy.matcher import DependencyMatcher, Matcher
 from spacy.tokens import Doc, Span, Token
 
 from clarity.clauses import VERBAL, Clause, is_clause_head
+from clarity.composition import OPS
 from clarity.config import Rule
 from clarity.matchers import phrase
 from clarity.matchers.common import CharSpan, dedupe, sentences, token_span
@@ -36,6 +37,8 @@ class Context:
     sections: list[tuple[int, int]]
     # Optional per-hit detail appended to the rule message, keyed (rule id, start, end).
     details: dict[tuple[str, int, int], str] = field(default_factory=dict)
+    # Optional per-hit message that replaces the rule message, keyed the same way.
+    messages: dict[tuple[str, int, int], str] = field(default_factory=dict)
     clauses: list[Clause] = field(default_factory=list)
     clause_of: dict[int, int] = field(default_factory=dict)
     paragraphs: list[tuple[int, int]] = field(default_factory=list)
@@ -88,6 +91,14 @@ def escalation_window(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
     return spans
 
 
+_MODIFIERS = {"amod", "det", "nummod", "poss", "prep", "advmod", "acl", "relcl", "compound", "dobj"}
+
+
+def _bare(tok: Token) -> bool:
+    """A noun or name with no modifier or object of its own, as in a plain list of things."""
+    return tok.pos_ in {"NOUN", "PROPN"} and not any(c.dep_ in _MODIFIERS for c in tok.children)
+
+
 @register
 def rule_of_three(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
     spans: list[CharSpan] = []
@@ -106,11 +117,27 @@ def rule_of_three(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
         if len(members) < int(rule.params.get("chain_length", 3)):
             continue
 
+        if rule.params.get("skip_plain_lists", False) and all(_bare(m) for m in members):
+            continue  # "region, month, and team" lists things; it has no rhythm to flag
+
         start = min(m.left_edge.i for m in members)
         end = max(m.right_edge.i for m in members) + 1
         spans.append(token_span(doc, start, end))
 
-    return spans
+    return _dense(spans, int(rule.params.get("min_per_block", 1)), ctx)
+
+
+def _dense(spans: list[CharSpan], least: int, ctx: Context) -> list[CharSpan]:
+    """Only the spans in a block (paragraph, title or item) that holds at least `least` of them."""
+    s = ctx.analysis.structure if ctx.analysis else None
+
+    if least <= 1 or s is None:
+        return spans
+
+    key = [s.block_at(a) for a, _ in spans]
+    counts = {id(k): sum(1 for x in key if x is k) for k in key}
+
+    return [sp for sp, k in zip(spans, key, strict=True) if counts[id(k)] >= least]
 
 
 def _is_markup_or_caption(sent: Span) -> bool:
@@ -289,8 +316,6 @@ def redundant_closer(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
     return spans
 
 
-OPS = {"gt": lambda x, y: x > y, "gte": lambda x, y: x >= y, "lt": lambda x, y: x < y,
-       "lte": lambda x, y: x <= y, "eq": lambda x, y: x == y}  # fmt: skip
 
 
 def _line_span(doc: Doc, line: int) -> CharSpan:
@@ -329,6 +354,51 @@ def metric_band(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
         return [_line_span(doc, int(i["line"])) for i in result.get("issues", [])]
 
     return _document_span(doc) if _holds(result, rule.params) else []
+
+
+@register
+def query(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
+    """Findings over a record set: one per matching record, or one when an aggregate passes.
+
+    params: records (a record set), where [{field, op, value}], match all|any, requires (a gate on
+    the set's summary, as in metric_band), aggregate {measure: count|share, op, value}, detail
+    (a template), topics (topic settings for this rule only). Messages take {field} placeholders.
+    """
+    from clarity import records
+
+    if ctx.analysis is None:
+        return []
+
+    p = rule.params
+    rows, summary = records.fetch(ctx.analysis, p["records"], p.get("topics"))
+    gate = p.get("requires")
+
+    if gate and not _holds(summary, gate):
+        return []
+
+    hits = [r for r in rows if records.matches(r, p.get("where") or [], p.get("match", "all"))]
+    agg = p.get("aggregate")
+
+    if agg:
+        total = sum(r.get("words", 1) for r in rows)
+        found = sum(r.get("words", 1) for r in hits)
+        measured = len(hits) if agg["measure"] == "count" else (found / total if total else 0.0)
+        passed = bool(hits) and records.OPS[agg["op"]](measured, agg["value"])
+        hits = [{**hits[0], agg["measure"]: round(measured, 4)}] if passed else []
+
+    spans: list[CharSpan] = []
+
+    for r in hits:
+        span = (int(r["start"]), int(r["end"]))
+        spans.append(span)
+
+        if "{" in rule.message:
+            ctx.messages[(rule.id, *span)] = records.fill(rule.message, r)
+
+        if p.get("detail"):
+            _detail(ctx, rule, span, records.fill(str(p["detail"]), r))
+
+    return spans
 
 
 def _is_definition(sent: Span) -> bool:
@@ -964,13 +1034,19 @@ def repeated_ngram(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
         min_words_apart=int(p.get("min_words_apart", 40)),
         skip_pos=set(p.get("exclude_pos_only", [])) or None,
         exclude_proper_nouns=bool(p.get("exclude_proper_nouns", True)),
+        skip_compounds=bool(p.get("skip_compounds", False)),
+        key_term_min=int(p.get("key_term_min", 0)),
     )
+    each = p.get("report", "each") == "each"
     spans: list[CharSpan] = []
 
     for rep in found:
-        for span in rep.spans:
+        lines = ", ".join(str(doc.text.count("\n", 0, a) + 1) for a, _ in rep.spans)
+
+        for span in rep.spans if each else rep.spans[:1]:
             spans.append(span)
-            _detail(ctx, rule, span, f'"{rep.phrase}" appears {len(rep.spans)} times.')
+            note = f'"{rep.phrase}" appears {len(rep.spans)} times (lines {lines}).'
+            _detail(ctx, rule, span, note)
 
     return spans
 

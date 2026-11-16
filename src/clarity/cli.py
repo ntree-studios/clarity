@@ -9,13 +9,16 @@ import sys
 from pathlib import Path
 from typing import Any, TextIO
 
-from clarity import baseline, config_cmds, harness, surface
+import yaml
+
+from clarity import baseline, config_cmds, harness, surface, topics
 from clarity.accept import accept, load_accepted
 from clarity.config import ConfigError, describe_rules
 from clarity.engine import SOURCE_STDIN, InputError, analyze
 from clarity.nlp import ModelError
 from clarity.render import render_json, render_text
-from clarity.resolve import Resolved, config_line, profile_line, resolve
+from clarity.resolve import Resolved, config_line, profile_line, resolve, switches
+from clarity.structure import TREE_SUFFIXES, StructureError
 
 EXIT_OK, EXIT_FAIL, EXIT_ERROR = 0, 1, 2
 
@@ -24,17 +27,80 @@ class CliError(Exception):
     """A user-facing error that maps to exit code 2."""
 
 
+CONFIG_HELP = (
+    "a config file, or a directory laid out like .clarity/; repeat to layer several. "
+    "Replaces config discovery"
+)
+
+
+def _focus_flags(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--keywords", help="focus keywords the text should be about, comma separated")
+    p.add_argument("--focus-named", action="append", metavar="NAME=KW1,KW2",
+                   help="a named focus topic with its keywords; repeat for several")  # fmt: skip
+
+
+def _switch_flags(p: argparse.ArgumentParser) -> None:
+    for flag, verb in (("--disable", "switch off"), ("--enable", "switch on")):
+        p.add_argument(flag, action="append", metavar="ID[,ID]",
+                       help=f"{verb} these rule or category ids after the config and profile; "
+                       "repeat or separate with commas")  # fmt: skip
+
+
+def _pairs(items: list[str] | None, flag: str, example: str) -> dict[str, str]:
+    """NAME=VALUE flags as a mapping. A missing name or value is an error."""
+    pairs = [item.partition("=") for item in items or []]
+    bad = [name for name, eq, value in pairs if not eq or not name or not value.strip()]
+
+    if bad:
+        raise CliError(f"{flag} takes {example}, got {bad[0]!r}")
+
+    return {name: value for name, _, value in pairs}
+
+
+def _words(text: str) -> list[str]:
+    return [w.strip() for w in text.split(",") if w.strip()]
+
+
+def _topic_overrides(args: argparse.Namespace) -> dict[str, Any]:
+    """topics: settings from --anchor, --named, --keywords and --focus-named."""
+    out: dict[str, Any] = {}
+
+    if getattr(args, "anchor", None):
+        out["anchor"] = args.anchor
+
+    if getattr(args, "named", None):
+        out["named"] = _pairs(args.named, "--named", "NAME=DESCRIPTION")
+
+    named = _pairs(args.focus_named, "--focus-named", "NAME=KW1,KW2")
+    focus: dict[str, Any] = {"keywords": _words(args.keywords)} if args.keywords else {}
+
+    if named:
+        focus["named"] = {name: {"keywords": _words(v)} for name, v in named.items()}
+
+    return {**out, "focus": focus} if focus else out
+
+
+TREE_HELP = "read the input as a section tree (JSON or YAML); .json/.yml/.yaml files always are"
+
+
+def _input_flags(p: argparse.ArgumentParser) -> None:
+    p.add_argument("path", nargs="?", help="file, or - for stdin")
+    p.add_argument("--tree", action="store_true", help=TREE_HELP)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="clarity", description="Prose linter for AI-slop tics.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     for name, helptext in (("check", "report findings"), ("score", "print the score only")):
         p = sub.add_parser(name, help=helptext)
-        p.add_argument("path", nargs="?", help="file, or - for stdin")
-        p.add_argument("--config", help="load only this file over the bundled pack")
+        _input_flags(p)
+        p.add_argument("--config", action="append", help=CONFIG_HELP)
         p.add_argument("--profile", help="profile name, or none")
         p.add_argument("--fail-under", type=float, default=80.0)
         p.add_argument("--min-confidence", choices=["exact", "inferred"], default="inferred")
+        _switch_flags(p)
+        _focus_flags(p)
 
         if name == "check":
             p.add_argument("--format", choices=["text", "json"], default="text")
@@ -46,11 +112,13 @@ def _parser() -> argparse.ArgumentParser:
 
     rules = sub.add_parser("rules", help="list active rules")
     rules.add_argument("--category", type=int)
-    rules.add_argument("--config")
+    rules.add_argument("--verbose", "-v", action="store_true",
+                       help="also print each rule's description and remediation")
+    rules.add_argument("--config", action="append", help=CONFIG_HELP)
     rules.add_argument("--profile")
 
     cfg = sub.add_parser("config", help="print the resolved config with sources")
-    cfg.add_argument("--config")
+    cfg.add_argument("--config", action="append", help=CONFIG_HELP)
     cfg.add_argument("--profile")
     cfg.add_argument("--format", choices=["text", "json"], default="text")
     cfg.add_argument("--explain", metavar="RULE_ID")
@@ -60,7 +128,7 @@ def _parser() -> argparse.ArgumentParser:
 
     t = sub.add_parser("test", help="run rule fixtures, corpus mode and snapshots")
     t.add_argument("target", nargs="?", help="a rule id or a fixture group")
-    t.add_argument("--config")
+    t.add_argument("--config", action="append", help=CONFIG_HELP)
     t.add_argument("--profile")
     t.add_argument("--changed", action="store_true", help="only rules changed vs git HEAD")
     t.add_argument("--corpus", help="false-positive rate against a corpus path")
@@ -72,12 +140,13 @@ def _parser() -> argparse.ArgumentParser:
     ex = sub.add_parser("explain", help="why a rule did or did not match a text")
     ex.add_argument("rule_id")
     ex.add_argument("text", nargs="+", help="the text, or - for stdin")
-    ex.add_argument("--config")
+    ex.add_argument("--tree", action="store_true", help=TREE_HELP)
+    ex.add_argument("--config", action="append", help=CONFIG_HELP)
     ex.add_argument("--profile")
 
     sn = sub.add_parser("snapshot", help="record current findings as a baseline")
     sn.add_argument("path")
-    sn.add_argument("--config")
+    sn.add_argument("--config", action="append", help=CONFIG_HELP)
     sn.add_argument("--profile")
 
     rep = sub.add_parser("repeats", help="list repeated phrases as candidate watchlist YAML")
@@ -90,25 +159,38 @@ def _parser() -> argparse.ArgumentParser:
     build = actions.add_parser("build", help="measure a corpus and store its baseline")
     build.add_argument("corpus")
     build.add_argument("--name", default="default")
-    build.add_argument("--config")
+    build.add_argument("--config", action="append", help=CONFIG_HELP)
     build.add_argument("--profile")
     actions.add_parser("list", help="list stored baselines")
     show = actions.add_parser("show", help="print a baseline")
     show.add_argument("name")
 
     dr = sub.add_parser("drift", help="how far a document sits from a baseline")
-    dr.add_argument("path", nargs="?", help="file, or - for stdin")
+    _input_flags(dr)
     dr.add_argument("--baseline", default="default")
     dr.add_argument("--format", choices=["text", "json"], default="text")
-    dr.add_argument("--config")
+    dr.add_argument("--config", action="append", help=CONFIG_HELP)
     dr.add_argument("--profile")
 
     tr = sub.add_parser("trend", help="a habit across a document's history or a folder of drafts")
     tr.add_argument("path")
     tr.add_argument("--metric")
     tr.add_argument("--rule")
-    tr.add_argument("--config")
+    tr.add_argument("--config", action="append", help=CONFIG_HELP)
     tr.add_argument("--profile")
+
+    tp = sub.add_parser("topics", help="topics, shares and topic shifts read off a chunk graph")
+    _input_flags(tp)
+    tp.add_argument("--anchor", help="text the main topic is closest to, such as the title")
+    tp.add_argument("--named", action="append", metavar="NAME=DESCRIPTION",
+                    help="a topic to measure alignment with; repeat for several")  # fmt: skip
+    _switch_flags(tp)
+    _focus_flags(tp)
+    tp.add_argument("--format", choices=["text", "json"], default="text")
+    tp.add_argument("--graph", choices=["json", "graphml", "dot"],
+                    help="print the chunk graph instead of the report")  # fmt: skip
+    tp.add_argument("--config", action="append", help=CONFIG_HELP)
+    tp.add_argument("--profile")
 
     sf = sub.add_parser("surface", help="everything a rule can address: fields, metrics, functions")
     for name in surface.SECTIONS:
@@ -117,10 +199,12 @@ def _parser() -> argparse.ArgumentParser:
     sf.add_argument("--format", choices=["markdown", "json"], default="markdown")
     sf.add_argument("--sync", metavar="FILE", help="rewrite the surface regions of a markdown file")
     sf.add_argument("--check", action="store_true", help="with --sync: exit 1 if the file is stale")
-    sf.add_argument("--config")
+    sf.add_argument("--config", action="append", help=CONFIG_HELP)
     sf.add_argument("--profile")
 
-    sub.add_parser("mcp", help="serve MCP over stdio")
+    mp = sub.add_parser("mcp", help="serve MCP over stdio")
+    mp.add_argument("--config", action="append", help=CONFIG_HELP)
+    mp.add_argument("--profile", help="profile every tool uses unless a call names one")
 
     return parser
 
@@ -154,21 +238,46 @@ def _read_source(path: str | None, stdin: TextIO) -> tuple[str, str]:
         raise CliError(f"cannot read {path}: {exc.strerror}") from exc
 
 
+def _read_document(args: argparse.Namespace, stdin: TextIO) -> tuple[str | dict[str, Any], str]:
+    """The input as a plain string, or as a section tree when --tree is set or the file is
+    .json, .yml or .yaml."""
+    text, source = _read_source(args.path, stdin)
+    suffix = Path(args.path).suffix.lower() if args.path not in (None, "-") else ""
+
+    if not (getattr(args, "tree", False) or suffix in TREE_SUFFIXES):
+        return text, source
+
+    try:
+        tree = json.loads(text) if suffix == ".json" else yaml.safe_load(text)
+    except (json.JSONDecodeError, yaml.YAMLError) as exc:
+        raise CliError(f"{source}: not a valid section tree: {exc}") from exc
+
+    return tree, source
+
+
 def _use_color(stream: TextIO) -> bool:
     return stream.isatty() and "NO_COLOR" not in os.environ
 
 
 def _resolve(args: argparse.Namespace, path: str | None = None) -> Resolved:
-    """Resolve config from the input file's directory, or the working directory for stdin."""
+    """Resolve config from the input file's directory, or the working directory for stdin, with
+    --disable and --enable on top where the command has them."""
     start = Path(path).resolve().parent if path not in (None, "-") else Path.cwd()
-    explicit = Path(args.config).resolve() if getattr(args, "config", None) else None
+    configs = getattr(args, "config", None)
+    explicit = [Path(c).resolve() for c in configs] if configs else None
+    overrides = switches(getattr(args, "disable", None), getattr(args, "enable", None))
 
-    return resolve(explicit, start, getattr(args, "profile", None))
+    return resolve(explicit, start, getattr(args, "profile", None), None, overrides)
 
 
 def _analyze(args: argparse.Namespace, stdin: TextIO) -> tuple[dict[str, Any], str]:
-    text, source = _read_source(args.path, stdin)
+    text, source = _read_document(args, stdin)
     resolved = _resolve(args, args.path)
+    overrides = _topic_overrides(args)
+
+    if overrides:
+        resolved.config.topics = topics.effective(resolved.config.topics, overrides)
+
     result = analyze(
         text,
         source=source,
@@ -241,8 +350,9 @@ def _cmd_test(args: argparse.Namespace, stdout: TextIO) -> int:
 
 def fixtures_index(resolved: Resolved) -> dict[str, Any]:
     from clarity.fixtures import load_index
+    from clarity.resolve import profile_fixtures
 
-    return load_index(resolved.folders)
+    return load_index(resolved.folders, profile_fixtures(resolved.profile))
 
 
 def _cmd_explain(args: argparse.Namespace, stdin: TextIO, stdout: TextIO) -> int:
@@ -255,7 +365,15 @@ def _cmd_explain(args: argparse.Namespace, stdin: TextIO, stdout: TextIO) -> int
         raise CliError(f"unknown rule {args.rule_id!r}")
 
     text = stdin.read() if args.text == ["-"] else " ".join(args.text)
-    stdout.write(explain(rule, text, resolved) + "\n")
+    document: str | dict[str, Any] = text
+
+    if args.tree:
+        try:
+            document = yaml.safe_load(text)
+        except yaml.YAMLError as exc:
+            raise CliError(f"not a valid section tree: {exc}") from exc
+
+    stdout.write(explain(rule, document, resolved) + "\n")
 
     return EXIT_OK
 
@@ -287,7 +405,7 @@ def _cmd_baseline(args: argparse.Namespace, stdout: TextIO) -> int:
 
 
 def _cmd_drift(args: argparse.Namespace, stdin: TextIO, stdout: TextIO) -> int:
-    text, source = _read_source(args.path, stdin)
+    text, source = _read_document(args, stdin)
     result = analyze(text, source=source, config=_resolve(args, args.path).config)
     found = baseline.drift(result["prose_metrics"]["metrics"], baseline.load(args.baseline))
 
@@ -333,6 +451,24 @@ def _cmd_surface(args: argparse.Namespace, stdout: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_topics(args: argparse.Namespace, stdin: TextIO, stdout: TextIO) -> int:
+    from clarity.engine import parse
+
+    text, source = _read_document(args, stdin)
+    config = _resolve(args, args.path).config
+    settings = topics.effective(config.topics, _topic_overrides(args))
+    result = topics.for_analysis(parse(text, config), settings)
+
+    if args.graph:
+        stdout.write(topics.export(result, args.graph) + "\n")
+    elif args.format == "json":
+        stdout.write(json.dumps(result.report, indent=2, sort_keys=True) + "\n")
+    else:
+        stdout.write(topics.format_text(result, source) + "\n")
+
+    return EXIT_OK
+
+
 def _cmd_rules(args: argparse.Namespace, stdout: TextIO) -> int:
     config = _resolve(args).config
 
@@ -350,6 +486,10 @@ def _cmd_rules(args: argparse.Namespace, stdout: TextIO) -> int:
             f"{row['category_number']:>2} {row['category']:<22} {row['id']:<30} "
             f"{row['severity']:<8} {row['confidence']:<9} {allowance}{where}\n"
         )
+
+        if args.verbose:
+            stdout.write("".join(f"     {text}\n" for text in
+                                 (row["description"], row["remediation"]) if text))  # fmt: skip
 
     return EXIT_OK
 
@@ -397,7 +537,7 @@ def main(
         if args.command == "mcp":
             from clarity.mcp_server import serve
 
-            serve()
+            serve(args.config, args.profile)
 
             return EXIT_OK
 
@@ -442,8 +582,12 @@ def main(
         if args.command == "repeats":
             return _cmd_repeats(args, stdin, stdout)
 
+        if args.command == "topics":
+            return _cmd_topics(args, stdin, stdout)
+
         result, source = _analyze(args, stdin)
-    except (CliError, ConfigError, ModelError, InputError, baseline.BaselineError) as exc:
+    except (CliError, ConfigError, ModelError, InputError, baseline.BaselineError,
+            topics.TopicSettingsError, StructureError) as exc:  # fmt: skip
         stderr.write(f"clarity: {exc}\n")
 
         return EXIT_ERROR

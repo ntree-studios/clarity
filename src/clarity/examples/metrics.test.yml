@@ -15,8 +15,9 @@
 ---
 "rule": "list-parallelism"
 "should_fire":
-- "Steps:\n\n- Fix the bug\n- Fixing the docs\n- Tests\n"
+- {document: {title: "Steps", items: ["Fix the bug", "Fixing the docs", "Tests"]}}
 "should_not_fire":
-- "Steps:\n\n- Fix the bug\n- Update the docs\n- Run the tests\n"
+- {document: {title: "Steps", items: ["Fix the bug", "Update the docs", "Run the tests"]}}
 - "No list here, only prose."
+- "Steps:\n\n- Fix the bug\n- Fixing the docs\n- Tests\n"  # markdown is plain text
 ---

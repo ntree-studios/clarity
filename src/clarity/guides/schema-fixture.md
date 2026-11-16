@@ -19,8 +19,8 @@ matches, `span`: a matched span, compared with whitespace collapsed and case fol
 
 ## Minimum
 
-At least 1 `should_fire` and 2 `should_not_fire` per rule. Negative cases matter more than
-positive ones: they prove the rule leaves ordinary prose alone.
+At least 1 `should_fire` and 2 `should_not_fire` per rule. Write the negative cases first: they
+prove the rule leaves ordinary prose alone.
 
 ## Good negative cases
 
@@ -30,7 +30,8 @@ positive ones: they prove the rule leaves ordinary prose alone.
 
 ## Good positive cases
 
-Take them from real hits in the bad corpus (`find_matches`), not from invented sentences.
+Take them from real hits in the bad corpus (`find_matches`). Invented sentences miss how people
+write.
 
-A multi-paragraph case is one string with `\n\n` between paragraphs. A section case needs a
-markdown heading line.
+A multi-paragraph case is one string with `\n\n` between paragraphs. A case that needs titles,
+items or sections is `{document: <section tree>}`, optionally with `expect`.

@@ -1,4 +1,5 @@
-"""Repeated n-grams inside one document: the mechanism behind every tic before anyone names it."""
+"""Repeated n-grams inside one document: the mechanism behind every tic, found before anyone
+has a name for it."""
 
 from __future__ import annotations
 
@@ -23,6 +24,30 @@ def _words(doc: Doc) -> list[Token]:
     return [t for t in doc if not t.is_punct and not t.is_space]
 
 
+def _compound(seg: list[Token]) -> bool:
+    """A noun with only compound modifiers before it, all inside the n-gram."""
+    head = seg[-1]
+
+    modifiers = seg[:-1]
+
+    return head.pos_ == "NOUN" and all(t.dep_ == "compound" and t.head.i == head.i
+                                       for t in modifiers)  # fmt: skip
+
+
+def _key_term(words: list[Token], positions: list[int], n: int, min_outside: int) -> bool:
+    """One of the phrase's nouns occurs min_outside times or more outside every occurrence."""
+    inside = {i + k for i in positions for k in range(n)}
+    first = positions[0]
+    nouns = {words[first + k].lemma_.lower() for k in range(n) if words[first + k].pos_ == "NOUN"}
+    outside: dict[str, int] = defaultdict(int)
+
+    for j, t in enumerate(words):
+        if j not in inside and t.pos_ == "NOUN" and t.lemma_.lower() in nouns:
+            outside[t.lemma_.lower()] += 1
+
+    return any(c >= min_outside for c in outside.values())
+
+
 def repeated_ngrams(
     doc: Doc,
     sizes: tuple[int, ...] = (2, 3, 4),
@@ -30,6 +55,8 @@ def repeated_ngrams(
     min_words_apart: int = 40,
     skip_pos: set[str] | None = None,
     exclude_proper_nouns: bool = True,
+    skip_compounds: bool = False,
+    key_term_min: int = 0,
 ) -> list[Repeat]:
     """Phrases occurring at least min_occurrences times, spaced apart, longest first.
 
@@ -37,6 +64,10 @@ def repeated_ngrams(
     n-grams containing a proper noun, and occurrences closer than min_words_apart to the
     previous kept one (lists and parallel structure are legitimate). A shorter n-gram wholly
     inside a longer reported one is suppressed.
+
+    skip_compounds drops noun compounds such as "interest rate" and "espresso shot", which are
+    terminology. key_term_min > 0 drops a phrase when one of its nouns also occurs at least that
+    many times outside the phrase, because such a noun is a subject of the text.
     """
     skip = DEFAULT_SKIP_POS if skip_pos is None else skip_pos
     words = _words(doc)
@@ -58,6 +89,9 @@ def repeated_ngrams(
             if exclude_proper_nouns and any(t.pos_ == "PROPN" for t in seg):
                 continue
 
+            if skip_compounds and _compound(seg):
+                continue
+
             grams[tuple(t.lemma_.lower() for t in seg)].append(i)
 
         for positions in grams.values():
@@ -70,6 +104,9 @@ def repeated_ngrams(
             fully_inside = all(all(i + k in covered for k in range(n)) for i in kept)
 
             if len(kept) < min_occurrences or fully_inside:
+                continue
+
+            if key_term_min and _key_term(words, positions, n, key_term_min):
                 continue
 
             for i in kept:

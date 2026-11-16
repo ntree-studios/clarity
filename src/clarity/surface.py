@@ -20,6 +20,7 @@ from clarity.config import (
     BACKENDS,
     CONFIDENCES,
     COUNT_SCOPES,
+    FIELDS,
     POSITIONS,
     SEVERITIES,
     Config,
@@ -27,7 +28,9 @@ from clarity.config import (
 )
 from clarity.metrics import load_registry
 
-SECTIONS = ("fields", "enums", "conditions", "metrics", "functions", "categories", "mcp", "sets")
+SECTIONS = (
+    "fields", "enums", "conditions", "metrics", "functions", "records", "categories", "mcp", "sets",
+)  # fmt: skip
 MATCHES = ("lemma", "lower")
 
 # One line per Rule field. A test fails if a field is added without a line here.
@@ -41,11 +44,14 @@ FIELD_DOCS = {
     "max_per_scope": "allowed matches per unit; at every other count_scope",
     "count_scope": "the unit the allowance is counted in",
     "position": "where a match must sit to count",
+    "min_any": "composite: distinct requires_any members that must be present (default 1)",
+    "applies_to": "section fields the rule reads: title, subtitle, text, items (default all)",
     "message": "text shown with each finding",
-    "suggestion": "replacement wording shown with the finding",
+    "description": "what the rule detects and why it is a problem for the reader",
+    "remediation": "how to fix a finding; every finding carries it",
     "phrases": "words or phrases, matched on lemmas unless match is lower",
     "lower_phrases": "phrases matched on case-folded surface text",
-    "pattern": "a spaCy Matcher token pattern",
+    "pattern": "a spaCy Matcher token pattern, or a list of them",
     "match": "lemma or lower, for phrases",
     "patterns": "spaCy DependencyMatcher patterns",
     "anchor": "the pattern node a finding spans",
@@ -53,6 +59,7 @@ FIELD_DOCS = {
     "next_lemma": "the match must be followed by one of these lemmas",
     "experimental": "report findings but leave them out of the score; skips the fixture rule",
     "fixtures_exempt": "skip the fixture rule (generated rules only)",
+    "marker": "a building block: its matches feed composites and in_scope, never the report",
     "function": "a registered structural function (see functions)",
     "params": "values the structural function reads",
     "suppress_if": "conditions that drop a match; it uses no allowance",
@@ -106,7 +113,7 @@ def _required(name: str) -> str:
 
 def rule_fields() -> list[dict[str, str]]:
     return [
-        {"name": f.name, "applies_to": _group(f.name), "default": _default(f),
+        {"name": f.name, "backend": _group(f.name), "default": _default(f),
          "required": _required(f.name), "description": FIELD_DOCS.get(f.name, "")}
         for f in fields(Rule)
     ]  # fmt: skip
@@ -117,7 +124,7 @@ def enums() -> dict[str, list[str]]:
         "backend": list(BACKENDS), "count_scope": list(COUNT_SCOPES),
         "position": list(POSITIONS), "severity": list(SEVERITIES),
         "confidence": list(CONFIDENCES), "match": list(MATCHES),
-        "op": list(composition.OPS),
+        "op": list(composition.OPS), "applies_to": list(FIELDS),
     }  # fmt: skip
 
 
@@ -139,6 +146,21 @@ def functions() -> list[dict[str, str]]:
     return [
         {"name": name, "description": _first_line(fn.__doc__)}
         for name, fn in sorted(REGISTRY.items())
+    ]  # fmt: skip
+
+
+def records() -> list[dict[str, Any]]:
+    """Every record set a query rule can read, with its fields and summary keys."""
+    load_registry()
+    from clarity.records import REGISTRY
+
+    def listed(fields: Any) -> list[dict[str, str]]:
+        return [{"name": f.name, "type": f.type, "description": f.doc} for f in fields]
+
+    return [
+        {"name": rs.name, "description": rs.doc, "fields": listed(rs.fields),
+         "summary": listed(rs.summary)}
+        for rs in sorted(REGISTRY.values(), key=lambda r: r.name)
     ]  # fmt: skip
 
 
@@ -170,6 +192,7 @@ def build(config: Config) -> dict[str, Any]:
         "conditions": CONDITION_DOCS,
         "metrics": metrics(),
         "functions": functions(),
+        "records": records(),
         "categories": categories(config),
         "mcp": mcp(),
         "sets": {"names": [], "note": "Named sets are not part of this schema."},
@@ -194,7 +217,7 @@ def _code(items: list[str]) -> str:
 def render(section: str, data: dict[str, Any]) -> str:
     """One section as markdown. The same text goes to the terminal, MCP and the README."""
     if section == "fields":
-        rows = [[f"`{f['name']}`", f["applies_to"], f["default"], f["required"], f["description"]]
+        rows = [[f"`{f['name']}`", f["backend"], f["default"], f["required"], f["description"]]
                 for f in data["fields"]]  # fmt: skip
 
         return _table(["Field", "Backend", "Default", "Required", "Meaning"], rows)
@@ -214,6 +237,9 @@ def render(section: str, data: dict[str, Any]) -> str:
     if section == "functions":
         return "\n".join(f"- `{f['name']}`: {f['description']}" for f in data["functions"])
 
+    if section == "records":
+        return _records_text(data["records"])
+
     if section == "categories":
         return ", ".join(f"{c['n']} {c['id']}" for c in data["categories"])
 
@@ -228,6 +254,27 @@ def render(section: str, data: dict[str, Any]) -> str:
         return str(data["sets"]["note"])
 
     raise ValueError(f"unknown surface section {section!r}; choose from {SECTIONS}")
+
+
+def _records_text(sets: list[dict[str, Any]]) -> str:
+    out = []
+
+    for rs in sets:
+        rows = [[f"`{f['name']}`", f["type"], f["description"]] for f in rs["fields"]]
+        summary = _code([f["name"] for f in rs["summary"]])
+        out.append(f"`{rs['name']}`: {rs['description']}. Summary for `requires`: {summary}.\n\n"
+                   + _table(["Field", "Type", "Meaning"], rows))  # fmt: skip
+
+    note = ("Every record also has `start`, `end` and `line`. A query condition is "
+            "`{field, op, value}` with op one of " + _code(_record_ops()) + ".")  # fmt: skip
+
+    return "\n\n".join([note, *out])
+
+
+def _record_ops() -> list[str]:
+    from clarity.records import OPS
+
+    return list(OPS)
 
 
 def markdown(data: dict[str, Any], names: tuple[str, ...] = SECTIONS) -> str:

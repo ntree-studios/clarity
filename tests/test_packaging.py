@@ -33,3 +33,13 @@ def test_license_is_mit_for_n_tree_studios():
     assert text.startswith("MIT License")
     assert "N-Tree Studios" in text
     assert data["project"]["license"] == "MIT"
+
+
+def test_package_data_covers_the_example_profiles():
+    for profile in (PACKAGE / "examples" / "profiles").glob("*.yml"):
+        name = f"examples/profiles/{profile.name}"
+        assert any(fnmatch.fnmatch(name, p) for p in declared_patterns())
+
+
+def test_no_profiles_directory_is_bundled_at_the_package_root():
+    assert not (PACKAGE / "profiles").exists()

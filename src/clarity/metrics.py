@@ -15,7 +15,7 @@ from typing import Any
 
 from spacy.tokens import Doc, Span
 
-from clarity import markdown
+from clarity import structure as structure_mod
 from clarity.clauses import Clause, clauses
 from clarity.matchers.common import sentences
 
@@ -30,7 +30,6 @@ class Metric:
     scalars: tuple[str, ...]
     fn: Callable[[Analysis], Any]
     doc: str = ""
-    needs_markdown: bool = False
 
 
 REGISTRY: dict[str, Metric] = {}
@@ -42,7 +41,6 @@ def metric(
     scopes: tuple[str, ...] = ("document",),
     returns: str = "mapping",
     scalars: tuple[str, ...] = (),
-    needs_markdown: bool = False,
 ) -> Callable[[Callable[[Analysis], Any]], Callable[[Analysis], Any]]:
     """Register fn as a metric. scalars are the result keys (dotted for nesting) that baselines
     and drift track."""
@@ -52,8 +50,7 @@ def metric(
         raise ValueError(f"metric {name}: unknown scopes {sorted(unknown)}")
 
     def wrap(fn: Callable[[Analysis], Any]) -> Callable[[Analysis], Any]:
-        REGISTRY[name] = Metric(name, scopes, returns, scalars, fn, (fn.__doc__ or "").strip(),
-                                needs_markdown)  # fmt: skip
+        REGISTRY[name] = Metric(name, scopes, returns, scalars, fn, (fn.__doc__ or "").strip())
 
         return fn
 
@@ -66,11 +63,14 @@ class Analysis:
 
     doc: Doc
     text: str
-    raw: str = ""
+    # Config blocks that measurements read: {"topics": ..., "records": ...}. Empty: defaults.
+    settings: dict[str, Any] = field(default_factory=dict)
+    structure: structure_mod.Structure | None = None
     _cache: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        self.raw = self.raw or self.text
+        if self.structure is None:
+            self.structure = structure_mod.from_text(self.text)
 
     @cached_property
     def sentences(self) -> list[Span]:
@@ -82,11 +82,8 @@ class Analysis:
 
     @cached_property
     def paragraphs(self) -> list[tuple[int, int]]:
-        return markdown.prose_paragraphs(self.text)
-
-    @cached_property
-    def model(self) -> markdown.Model:
-        return markdown.parse(self.raw)
+        assert self.structure is not None
+        return self.structure.paragraphs()
 
     @cached_property
     def words(self) -> int:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import functools
 import json
 import logging
+import os
 import sys
 from collections.abc import Callable
 from importlib import resources
@@ -14,12 +15,12 @@ from typing import Any, ParamSpec, TypeVar
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 
-from clarity import bootstrap, prompts, surface
+from clarity import bootstrap, prompts, surface, topics
+from clarity.config import Config, _parse
 from clarity.config import describe_rules as describe
-from clarity.config import load_config
-from clarity.engine import analyze
+from clarity.engine import analyze, contract
 from clarity.nlp import ModelError
-from clarity.resolve import resolve
+from clarity.resolve import ENV_CONFIG, ENV_PROFILE, resolve, switches
 
 SOURCE = "<text>"
 log = logging.getLogger("clarity.mcp")
@@ -58,23 +59,134 @@ def _guide(name: str) -> str:
 # ---- checking -----------------------------------------------------------------------------
 
 
+FOCUS_DOC = """focus is optional: {keywords: [str], description: str, named: {name: {keywords:
+    [str], description: str}}}. It says what the text is supposed to be about. Keywords join the
+    topic vocabulary even when rare, add to the anchor, and are counted per chunk and section."""
+
+SWITCH_DOC = """disable and enable are optional lists of rule ids or category ids (clarity://rules
+    lists both). A category id stands for every rule in it. They apply after the config and the
+    profile, disables first, so enable can turn one rule back on inside a disabled category or
+    turn on a rule that is off by default. An unknown id is an error."""
+
+
+def _focus_doc[**Q, T](fn: Callable[Q, T]) -> Callable[Q, T]:
+    """Put the focus and disable/enable argument schemas in the tool description clients see."""
+    fn.__doc__ = (fn.__doc__ or "").replace("{focus}", FOCUS_DOC).replace("{switch}", SWITCH_DOC)
+
+    return fn
+
+
+def _config(
+    profile: str | None = None,
+    text: str | None = None,
+    focus: dict[str, Any] | None = None,
+    disable: list[str] | None = None,
+    enable: list[str] | None = None,
+) -> Config:
+    """The config the CLI would use in the working directory (shipped pack and profiles, user and
+    project .clarity/, or the server's --config), with profile, clarity.yml text, disable and
+    enable, and focus applied on top."""
+    extra = _parse(text) if text else None
+    config = resolve(None, Path.cwd(), profile, extra, switches(disable, enable)).config
+
+    if focus:
+        config.topics = topics.effective(config.topics, {"focus": focus})
+
+    return config
+
+
 @server.tool()
 @_reports(ToolError)
-def check_text(text: str, config: str | None = None) -> dict[str, Any]:
-    """Lint prose. Returns findings, per-category breakdown, style score and readability.
+@_focus_doc
+def check_text(
+    text: str | None = None,
+    document: dict[str, Any] | None = None,
+    config: str | None = None,
+    focus: dict[str, Any] | None = None,
+    profile: str | None = None,
+    disable: list[str] | None = None,
+    enable: list[str] | None = None,
+) -> dict[str, Any]:
+    """Lint prose. Send text (a plain string, one section) or document (a section tree; read
+    clarity://guide/document for how to break content into sections). Returns the document score
+    and the section tree: each section's own findings, categories, score, and a rollup score
+    over it and its child sections. Findings give the field (title, subtitle, text, items[i])
+    and offsets, line and column inside that field. clarity://guide/usage covers choosing a
+    profile, which rules to switch off and how to read the findings.
 
-    config is optional clarity.yml text merged over the default pack.
+    Uses the same config as the CLI in the working directory: the shipped rules and profiles,
+    then ~/.clarity and the project .clarity/ (or the server's --config). profile is a profile name
+    (technical, business, essay, or one of your own; "none" for no profile). config is optional
+    clarity.yml text applied on top. {switch} {focus}
     """
-    return analyze(text, source=SOURCE, config=load_config(text=config))
+    config_ = _config(profile, config, focus, disable, enable)
+
+    return contract(analyze(_input(text, document), source=SOURCE, config=config_))
 
 
 @server.tool()
 @_reports(ToolError)
-def score_text(text: str) -> dict[str, Any]:
-    """Style score (0-100) and readability for the text."""
-    result = analyze(text, source=SOURCE)
+@_focus_doc
+def score_text(
+    text: str | None = None,
+    document: dict[str, Any] | None = None,
+    focus: dict[str, Any] | None = None,
+    profile: str | None = None,
+    disable: list[str] | None = None,
+    enable: list[str] | None = None,
+) -> dict[str, Any]:
+    """Style score (0-100) and readability, with the same input and config as check_text.
+    profile is a profile name, or "none". {switch} {focus}"""
+    config = _config(profile, None, focus, disable, enable)
+    result = analyze(_input(text, document), source=SOURCE, config=config)
 
     return {"score": result["score"], "readability": result["readability"]}
+
+
+def _input(text: str | None, document: dict[str, Any] | None) -> str | dict[str, Any]:
+    """Exactly one of text and document."""
+    if (text is None) == (document is None):
+        raise ValueError("send either text (a plain string) or document (a section tree)")
+
+    return document if document is not None else str(text)
+
+
+@server.tool()
+@_reports(ToolError)
+@_focus_doc
+def analyze_topics(
+    text: str | None = None,
+    document: dict[str, Any] | None = None,
+    anchor: str | None = None,
+    named: dict[str, str] | None = None,
+    graph: bool = False,
+    settings: dict[str, Any] | None = None,
+    focus: dict[str, Any] | None = None,
+    disable: list[str] | None = None,
+    enable: list[str] | None = None,
+) -> dict[str, Any]:
+    """Topics, word shares, topic shifts and main/digression/drift runs from a chunk graph.
+    Send text (a plain string) or document (a section tree, see clarity://guide/document).
+
+    anchor is text the main topic should be closest to; by default the title. named maps a topic
+    name to description words and adds alignment shares. settings overrides the topics: config
+    block. With graph true, the result also carries the graph as node-link JSON. {switch}
+    {focus}
+    """
+    from clarity.engine import parse
+
+    overrides: dict[str, Any] = dict(settings or {})
+    overrides.update({k: v for k, v in (("anchor", anchor), ("named", named), ("focus", focus))
+                      if v})  # fmt: skip
+    config = _config(disable=disable, enable=enable)
+    settings_ = topics.effective(config.topics, overrides)
+    result = topics.for_analysis(parse(_input(text, document), config), settings_)
+    out = dict(result.report)
+
+    if graph:
+        out["graph"] = topics.graph_json(result)
+
+    return out
 
 
 @server.tool()
@@ -176,7 +288,7 @@ def build_baseline(corpus_path: str, name: str = "default") -> dict[str, Any]:
 def measure_drift(text: str, baseline: str = "default") -> dict[str, Any]:
     """z-score of each metric for a text against a stored baseline.
 
-    The score is a distance from the baseline, not a verdict on the writing.
+    The score measures only the distance from the baseline.
     """
     return bootstrap.measure_drift(text, baseline)
 
@@ -278,6 +390,30 @@ def resource_surface() -> str:
     return _dump(surface.build(resolve(None, Path.cwd(), None).config))
 
 
+@server.resource("clarity://guide/document", mime_type="text/markdown")
+@_reports(ResourceError)
+def resource_guide_document() -> str:
+    """How to break content into sections for check_text, score_text and analyze_topics."""
+    return _guide("document.md")
+
+
+@server.resource("clarity://guide/usage", mime_type="text/markdown")
+@_reports(ResourceError)
+def resource_guide_usage() -> str:
+    """How to use check_text on someone's writing: input shape, profile, rules to switch off,
+    reading the findings."""
+    return _guide("usage.md")
+
+
+@server.resource("clarity://schema/document", mime_type="application/json")
+@_reports(ResourceError)
+def resource_schema_document() -> str:
+    """JSON Schema of the document argument (input) and of the check_text response."""
+    from clarity.structure import SCHEMA
+
+    return _dump(SCHEMA)
+
+
 @server.resource("clarity://schema/rule", mime_type="text/markdown")
 @_reports(ResourceError)
 def resource_schema_rule() -> str:
@@ -353,7 +489,15 @@ def tune_rule(rule_id: str) -> str:
     return prompts.tune_rule(rule_id)
 
 
-def serve() -> None:
+def serve(config: list[str] | None = None, profile: str | None = None) -> None:
+    """--config and --profile reach every tool and resource through the environment resolve()
+    reads, so a client can also set CLARITY_CONFIG and CLARITY_PROFILE itself."""
+    if config:
+        os.environ[ENV_CONFIG] = os.pathsep.join(str(Path(c).resolve()) for c in config)
+
+    if profile:
+        os.environ[ENV_PROFILE] = profile
+
     logging.basicConfig(stream=sys.stderr, level=logging.INFO)
     log.info("clarity mcp server starting on stdio")
     server.run("stdio")

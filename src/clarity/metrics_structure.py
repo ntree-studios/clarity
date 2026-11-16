@@ -346,38 +346,33 @@ def pronoun_antecedent_distance(a: Analysis) -> dict[str, Any]:
 # ---- document structure -------------------------------------------------------------------
 
 
-@metric(
-    "heading_hierarchy", needs_markdown=True, scalars=("skipped_levels", "single_child", "empty")
-)
+@metric("heading_hierarchy", scalars=("skipped_levels", "single_child", "empty"))
 def heading_hierarchy(a: Analysis) -> dict[str, Any]:
-    """Skipped heading levels, sections with one subsection, and headings with no body."""
-    heads = a.model.headings
+    """Titled sections under an untitled parent, sections with one child section, and titled
+    sections with no body and no children. Read from the document tree the caller gave."""
+    assert a.structure is not None
+    parts = a.structure.parts
     issues: list[dict[str, Any]] = []
+    titled = [p for p in parts if p.title]
     skipped = single = empty = 0
 
-    for i, h in enumerate(heads):
-        previous = heads[i - 1].level if i else None
+    for p in parts:
+        first = p.blocks[0].start if p.blocks else 0
+        where = {"section": p.path, "title": p.title, "line": a.text.count("\n", 0, first) + 1}
 
-        if previous is not None and h.level > previous + 1:
+        if p.title and p.parent is not None and not parts[p.parent].title and p.parent != 0:
             skipped += 1
-            issues.append({"line": h.line, "kind": "skipped-level"})
+            issues.append({**where, "kind": "skipped-level"})
 
-        later = heads[i + 1 :]
-        stop = next((n for n, x in enumerate(later) if x.level <= h.level), len(later))
-        kids = [x for x in later[:stop] if x.level == h.level + 1]
-
-        if len(kids) == 1:
+        if len(p.children) == 1:
             single += 1
-            issues.append({"line": h.line, "kind": "single-child"})
+            issues.append({**where, "kind": "single-child"})
 
-        nxt = heads[i + 1].start if i + 1 < len(heads) else a.model.length
-        body = a.raw[h.end : nxt].strip()
-
-        if not body and not later[:stop]:
+        if p.title and not p.body and not p.children:
             empty += 1
-            issues.append({"line": h.line, "kind": "empty"})
+            issues.append({**where, "kind": "empty"})
 
-    return {"headings": len(heads), "skipped_levels": skipped, "single_child": single,
+    return {"headings": len(titled), "skipped_levels": skipped, "single_child": single,
             "empty": empty, "issues": issues}  # fmt: skip
 
 
@@ -385,13 +380,15 @@ def _pos(tok: Token) -> str:
     return "VERB" if tok.pos_ in VERBAL else tok.pos_
 
 
-@metric("list_parallelism", needs_markdown=True, scalars=("mismatched",))
+@metric("list_parallelism", scalars=("mismatched",))
 def list_parallelism(a: Analysis) -> dict[str, Any]:
-    """Lists whose items open with different parts of speech or use different verb forms."""
+    """Item lists whose items open with different parts of speech or use different verb forms."""
+    assert a.structure is not None
+    lists = a.structure.item_lists()
     issues = []
 
-    for block in a.model.lists:
-        spans = [a.doc.char_span(i.start, i.end, alignment_mode="expand") for i in block.items]
+    for items in lists:
+        spans = [a.doc.char_span(b.start, b.end, alignment_mode="expand") for b in items]
         rows = [s for s in spans if s is not None and len(s)]
 
         if len(rows) < 2:
@@ -401,28 +398,11 @@ def list_parallelism(a: Analysis) -> dict[str, Any]:
         forms = {FORMS.get(s.root.tag_, s.root.tag_) for s in rows if s.root.pos_ in VERBAL}
 
         if len(first) > 1 or len(forms) > 1:
-            issues.append(
-                {"line": block.line, "first_pos": sorted(first), "verb_forms": sorted(forms)}
-            )
+            issues.append({"section": a.structure.parts[items[0].part].path,
+                           "line": a.text.count("\n", 0, items[0].start) + 1,
+                           "first_pos": sorted(first), "verb_forms": sorted(forms)})  # fmt: skip
 
-    return {"lists": len(a.model.lists), "mismatched": len(issues), "issues": issues}
-
-
-@metric("code_prose_ratio", needs_markdown=True, scalars=("value",))
-def code_prose_ratio(a: Analysis) -> dict[str, Any]:
-    """Characters of code (fences and inline code) per character of prose."""
-    fenced = sum(f.end - f.start for f in a.model.fences)
-    code = fenced + a.model.inline_code_chars
-    prose = max(a.model.length - fenced - a.model.inline_code_chars, 0)
-
-    return {"value": _round(code / prose, 3) if prose else None, "code_chars": code,
-            "prose_chars": prose}  # fmt: skip
-
-
-@metric("link_density", needs_markdown=True, scalars=("per_1k",))
-def link_density(a: Analysis) -> dict[str, Any]:
-    """Links and bare URLs per 1000 words."""
-    return {"per_1k": _per_1k(len(a.model.links), a.words), "links": len(a.model.links)}
+    return {"lists": len(lists), "mismatched": len(issues), "issues": issues}
 
 
 @metric("sentence_overlap", scopes=("document",), scalars=("mean",))

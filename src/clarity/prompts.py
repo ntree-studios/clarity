@@ -34,8 +34,10 @@ Steps:
    returns nothing useful, say so. Do not invent candidates.
 3. Read a sample of documents from each corpus so you can interpret the candidates. A bare
    n-gram list needs grouping a reader can follow.
-4. Read clarity://surface first: it lists every field, enum, condition, metric and structural
-   function a rule can use, so a draft is built from what exists and the loader will accept it.
+4. Read clarity://surface first: it lists every field, enum, condition, metric, structural
+   function and record set a rule can use, so a draft is built from what exists and the loader
+   will accept it. A pattern over measured units (paragraphs, sections, topic chunks, segments,
+   graph nodes) is a structural rule with function: query over a record set, written in YAML.
    Then read clarity://schema/rule and clarity://guide/authoring before drafting YAML.
 5. Group candidates into categories with a name and one sentence of description.
 6. For each group draft one rule definition and call test_rule with it and both paths. Report the
@@ -55,9 +57,8 @@ Steps:
 
 def bootstrap_fixtures(rule_id: str) -> str:
     return f"""\
-Write fixtures for the rule {rule_id}. A rule without negative cases is the rule that gets the
-tool uninstalled, so negative cases matter more than positive ones. The minimum is 1 should_fire
-and 2 should_not_fire.
+Write fixtures for the rule {rule_id}. A rule that flags ordinary prose gets the tool uninstalled,
+so write the negative cases first. The minimum is 1 should_fire and 2 should_not_fire.
 
 {MEASUREMENT_RULE}
 

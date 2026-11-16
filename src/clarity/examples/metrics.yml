@@ -3,6 +3,8 @@
 # through metric_band; the thresholds are guesses until calibrated against your own writing.
 rules:
   - id: sentence-type-imbalance
+    description: "One sentence type (simple, compound or complex) makes up more than 70% of a text of eight or more sentences, which flattens the rhythm. It ships in the metrics example set and is off by default."
+    remediation: "Mix the types. Join some short sentences with \"because\", \"when\" or \"and\", or split a long one."
     category: prose-metrics
     backend: structural
     function: metric_band
@@ -16,6 +18,8 @@ rules:
       gt: 0.70
       requires: {key: sentences, gte: 8}
   - id: monotone-openers
+    description: "Most sentences in a text of eight or more open with the same word, as in a run of \"The... The... The...\". The repetition tires the reader. It ships in the metrics example set and is off by default."
+    remediation: "Open some sentences with a time (\"By noon\"), a condition (\"If it rains\") or a different subject."
     category: prose-metrics
     backend: structural
     function: metric_band
@@ -29,6 +33,8 @@ rules:
       lt: 0.30
       requires: {key: sentences, gte: 8}
   - id: list-parallelism
+    description: "List items that do not share a grammatical form, as in \"Fix the bug\", \"Fixing the docs\" and \"Tests\". The reader has to re-parse each item. It ships in the metrics example set and is off by default."
+    remediation: "Give every item the same form. \"Fix the bug / Fixing the docs / Tests\" becomes \"Fix the bug / Update the docs / Run the tests\"."
     category: construction
     backend: structural
     function: metric_band

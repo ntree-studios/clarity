@@ -1,4 +1,4 @@
-# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
+# Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
 "rule": "intensifier"
 "should_fire":
 - "This is genuinely useful."
@@ -24,3 +24,13 @@
 - "She made a mistake on the form."
 - "A mistake was made in the form."
 - "She will be clear of the harbor by noon."
+---
+rule: ease-words
+should_not_fire:
+  - "Open the configuration file and add your key."
+  - "The test just passed on the second run."
+  - "Installing the CLI"
+should_fire:
+  - "Simply open the configuration file."
+  - "You can easily add a key."
+  - "Just run the installer."

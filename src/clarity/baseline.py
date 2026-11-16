@@ -1,7 +1,7 @@
 """Baselines, drift and trend: whether a document reads like the writer's own work.
 
 A baseline stores the mean and spread of every tracked metric across a corpus. Drift is the
-distance of one document from it. A drift score is a distance, not a verdict.
+distance of one document from it. A drift score is a distance from the baseline.
 """
 
 from __future__ import annotations

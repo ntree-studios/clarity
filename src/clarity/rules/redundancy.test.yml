@@ -1,42 +1,76 @@
-# Fixtures. should_not_fire matters more: it proves the rule leaves normal prose alone.
-"rule": "section-restatement"
-"should_fire":
-- "# Caching\n\nThe cache speeds up reads. It stores hot keys. The cache speeds up reads again."
-- "# Speed\n\nThe cache speeds up reads. It stores hot keys. The cache speeds up reads again."
-"should_not_fire":
-- "# Caching\n\nThe cache speeds up reads. It stores hot keys. Eviction removes stale entries."
-- "# Notes\n\nThe fix is small. It touches one file. Tests cover it."
-- "# Plan\n\nWe start in March. Hiring comes first. The launch follows in June."
+# Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
+rule: section-restatement
+should_fire:
+- document:
+    title: Caching
+    text: The cache speeds up reads. It stores hot keys. The cache speeds up reads again.
+- document:
+    title: Speed
+    text: The cache speeds up reads. It stores hot keys. The cache speeds up reads again.
+should_not_fire:
+- document:
+    title: Caching
+    text: The cache speeds up reads. It stores hot keys. Eviction removes stale entries.
+- document:
+    title: Notes
+    text: The fix is small. It touches one file. Tests cover it.
+- document:
+    title: Plan
+    text: We start in March. Hiring comes first. The launch follows in June.
 ---
-"rule": "self-repetition"
-"should_fire":
-- "The system has many moving parts. Rain fell across the harbor all morning. Crews unloaded crates of\
-  \ oranges and tin. A gull watched from the old pier. Nobody hurried, because the tide had not turned.\
-  \ Later the foreman counted receipts twice. The kettle in the shed whistled softly. By noon the clouds\
-  \ had thinned. Children chased pigeons along the quay. An engine coughed, then caught. The ferry left\
-  \ on schedule with few passengers. Somewhere a radio played a slow waltz. Those moving parts break often.\
-  \ Rain fell across the harbor all morning. Crews unloaded crates of oranges and tin. A gull watched\
-  \ from the old pier. Nobody hurried, because the tide had not turned. Later the foreman counted receipts\
-  \ twice. The kettle in the shed whistled softly. By noon the clouds had thinned. Children chased pigeons\
-  \ along the quay. An engine coughed, then caught. The ferry left on schedule with few passengers. Somewhere\
-  \ a radio played a slow waltz. Nobody tracked the moving parts closely."
-"should_not_fire":
-- "The system has many moving parts and moving parts and moving parts. Rain fell across the harbor all\
-  \ morning. Crews unloaded crates of oranges and tin. A gull watched from the old pier. Nobody hurried,\
-  \ because the tide had not turned. Later the foreman counted receipts twice. The kettle in the shed\
-  \ whistled softly. By noon the clouds had thinned. Children chased pigeons along the quay. An engine\
-  \ coughed, then caught. The ferry left on schedule with few passengers. Somewhere a radio played a slow\
-  \ waltz. "
-- "Rain fell across the harbor all morning. Crews unloaded crates of oranges and tin. A gull watched from\
-  \ the old pier. Nobody hurried, because the tide had not turned. Later the foreman counted receipts\
-  \ twice. The kettle in the shed whistled softly. By noon the clouds had thinned. Children chased pigeons\
-  \ along the quay. An engine coughed, then caught. The ferry left on schedule with few passengers. Somewhere\
-  \ a radio played a slow waltz. "
+rule: self-repetition
+should_fire:
+- The system has many moving parts. Rain fell across the harbor all morning. Crews unloaded crates of
+  oranges and tin. A gull watched from the old pier. Nobody hurried, because the tide had not turned.
+  Later the foreman counted receipts twice. The kettle in the shed whistled softly. By noon the clouds
+  had thinned. Children chased pigeons along the quay. An engine coughed, then caught. The ferry left
+  on schedule with few passengers. Somewhere a radio played a slow waltz. Those moving parts break often.
+  Rain fell across the harbor all morning. Crews unloaded crates of oranges and tin. A gull watched from
+  the old pier. Nobody hurried, because the tide had not turned. Later the foreman counted receipts twice.
+  The kettle in the shed whistled softly. By noon the clouds had thinned. Children chased pigeons along
+  the quay. An engine coughed, then caught. The ferry left on schedule with few passengers. Somewhere
+  a radio played a slow waltz. Nobody tracked the moving parts closely.
+should_not_fire:
+- 'The interest rate sets the payment. Rain fell across the harbor all morning. Crews unloaded crates
+  of oranges and tin. A gull watched from the old pier. Nobody hurried, because the tide had not turned.
+  Later the foreman counted receipts twice. The kettle in the shed whistled softly. By noon the clouds
+  had thinned. Children chased pigeons along the quay. An engine coughed, then caught. The ferry left
+  on schedule with few passengers. Somewhere a radio played a slow waltz. A lower interest rate saves
+  money. Rain fell across the harbor all morning. Crews unloaded crates of oranges and tin. A gull watched
+  from the old pier. Nobody hurried, because the tide had not turned. Later the foreman counted receipts
+  twice. The kettle in the shed whistled softly. By noon the clouds had thinned. Children chased pigeons
+  along the quay. An engine coughed, then caught. The ferry left on schedule with few passengers. Somewhere
+  a radio played a slow waltz. Ask the bank which interest rate applies. '
+- 'The monthly payment falls in spring. Rain fell across the harbor all morning. Crews unloaded crates
+  of oranges and tin. A gull watched from the old pier. Nobody hurried, because the tide had not turned.
+  Later the foreman counted receipts twice. The kettle in the shed whistled softly. By noon the clouds
+  had thinned. Children chased pigeons along the quay. An engine coughed, then caught. The ferry left
+  on schedule with few passengers. Somewhere a radio played a slow waltz. Every payment counts, and a
+  late payment costs a fee. Snow covered the valley road by dusk. Two farmers walked their dogs past the
+  mill. The baker closed early on account of the cold. Smoke rose straight up from every chimney. A fox
+  crossed the frozen field without a sound. The church bell rang six times. Lamps came on in the windows
+  one by one. A truck slid gently into the ditch and waited for help. Somebody brought hot soup to the
+  driver. The monthly payment rises in autumn. Rain fell across the harbor all morning. Crews unloaded
+  crates of oranges and tin. A gull watched from the old pier. Nobody hurried, because the tide had not
+  turned. Later the foreman counted receipts twice. The kettle in the shed whistled softly. By noon the
+  clouds had thinned. Children chased pigeons along the quay. An engine coughed, then caught. The ferry
+  left on schedule with few passengers. Somewhere a radio played a slow waltz. Write down each payment.
+  The monthly payment is due on the first. '
+- 'The system has many moving parts and moving parts and moving parts. Rain fell across the harbor all
+  morning. Crews unloaded crates of oranges and tin. A gull watched from the old pier. Nobody hurried,
+  because the tide had not turned. Later the foreman counted receipts twice. The kettle in the shed whistled
+  softly. By noon the clouds had thinned. Children chased pigeons along the quay. An engine coughed, then
+  caught. The ferry left on schedule with few passengers. Somewhere a radio played a slow waltz. '
+- 'Rain fell across the harbor all morning. Crews unloaded crates of oranges and tin. A gull watched from
+  the old pier. Nobody hurried, because the tide had not turned. Later the foreman counted receipts twice.
+  The kettle in the shed whistled softly. By noon the clouds had thinned. Children chased pigeons along
+  the quay. An engine coughed, then caught. The ferry left on schedule with few passengers. Somewhere
+  a radio played a slow waltz. '
 ---
-"rule": "tautology"
-"should_fire":
-- "The end result was bad."
-"should_not_fire":
-- "The result was bad."
-- "The final result was good."
----
+rule: tautology
+should_fire:
+- The end result was bad.
+should_not_fire:
+- The result was bad.
+- The final result was good.
+--- null
