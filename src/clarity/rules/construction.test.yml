@@ -28,6 +28,7 @@
 "should_not_fire":
 - "The score threshold failed."
 - "The score failed."
+- {document: {title: "Platform cost drivers"}}
 ---
 "rule": "preposition-chain"
 "should_fire":

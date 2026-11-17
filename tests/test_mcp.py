@@ -123,7 +123,7 @@ def test_check_text_returns_findings_and_score(session):
 
     assert "findings" not in data and "categories" not in data
     assert any(f["rule"] == "em-dash" for f in found)
-    assert found[0]["source"] == "<text>" and found[0]["field"] == "text"
+    assert found[0]["field"] == "text"
     assert data["score"] < 100 and data["score"] == data["section"]["rollup"]["score"]
     assert "readability" in data
 
@@ -335,3 +335,28 @@ def test_usage_guide_is_a_resource(session):
 
     assert "clarity://guide/usage" in listed
     assert "disable" in text and "enable" in text
+
+
+COMBO = """
+rules:
+  - {id: combo, category: composite, backend: composite, count_scope: sentence,
+     experimental: true, max_per_scope: 0, requires_all: [{rule: hedge}, {rule: intensifier}]}
+"""
+
+
+def with_children(findings):
+    """Every finding, with its composite children after it."""
+    for f in findings:
+        yield f
+        yield from with_children(f.get("children", []))
+
+
+def test_check_text_findings_carry_no_source_key_children_included(session):
+    document = {"sections": [{"title": "Pilot", "text": "This is arguably genuinely fine."}]}
+    data = payload(session.tool("check_text", {"document": document, "config": COMBO}))
+    found = list(with_children(walk(data["section"])))
+    combo = [f for f in found if f["rule"] == "combo"]
+
+    assert combo and combo[0]["children"]
+    assert len(found) > len(combo)
+    assert not [f for f in found if "source" in f]

@@ -6,6 +6,8 @@
 "should_not_fire":
 - "It is faster, cheaper, and more reliable."
 - "Track it by store, aisle, and shelf. Report it by region, month, and team."
+- "Each section takes a title, subtitle, text and items."
+- "The export lists field names, section paths and line numbers."
 - "It is fast and cheap."
 - "Ana and Ben went home."
 - "The dog barked."
@@ -111,6 +113,8 @@ should_not_fire:
 - {document: {title: "Lessons from the 2019 flood"}}
 - {document: {title: "How the bridge was built"}}
 - {document: {title: "St. Louis and the river trade"}}
+- {document: {title: "Billing schedule: each invoice follows an accepted deliverable"}}
+- {document: {title: "Billing schedule: each invoice follows a deliverable, then a payment"}}
 - {document: {title: "Results", text: "Two teams, one goal, and what it means for us all."}}
 ---
 rule: count-noun-title

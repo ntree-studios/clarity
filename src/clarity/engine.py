@@ -594,7 +594,31 @@ CONTRACT_KEYS = ("score", "words", "sentences", "section", "readability", "prose
                  "disabled_rules")  # fmt: skip
 
 
+def _without_source(finding: dict[str, Any]) -> dict[str, Any]:
+    """Copy a finding without `source`. Composite children lose it too."""
+    out = {k: v for k, v in finding.items() if k != "source"}
+
+    if "children" in out:
+        out["children"] = [_without_source(c) for c in out["children"]]
+
+    return out
+
+
+def _section_without_source(section: dict[str, Any]) -> dict[str, Any]:
+    out = dict(section)
+    out["findings"] = [_without_source(f) for f in section.get("findings", [])]
+    out["sections"] = [_section_without_source(c) for c in section.get("sections", [])]
+
+    return out
+
+
 def contract(result: dict[str, Any]) -> dict[str, Any]:
     """The response clients get: the document score and the section tree. Each finding appears
-    once, in the section where it was found."""
-    return {k: result[k] for k in CONTRACT_KEYS if k in result}
+    once, in the section where it was found. The section path and field locate a finding, so the
+    response omits `source`."""
+    out = {k: result[k] for k in CONTRACT_KEYS if k in result}
+
+    if "section" in out:
+        out["section"] = _section_without_source(out["section"])
+
+    return out

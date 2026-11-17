@@ -622,6 +622,21 @@ def _line(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
 
 
+def _where(text: str, structure: Structure | None, start: int, end: int) -> dict[str, Any]:
+    """Where a span is, as findings report it. The result has the section path, the field, and
+    the first and last line counted inside that field. Without a structure the lines count from
+    the start of the text."""
+    if structure is None:
+        return {"section": "", "field": "", "line": _line(text, start),
+                "end_line": _line(text, end)}  # fmt: skip
+
+    first = structure.locate(start, start)
+    last = structure.locate(max(start, end - 1), max(start, end - 1))
+
+    return {"section": structure.parts[structure.part_at(start)].path, "field": first["field"],
+            "line": first["line"], "end_line": last["line"]}  # fmt: skip
+
+
 def headings(structure: Structure) -> list[tuple[int, int, str]]:
     """(level, offset, title) of each part title, in tree order."""
     return [(level, start, title) for level, start, _, title in structure.headings()]
@@ -829,7 +844,8 @@ def _assemble(
         "anchor_source": _anchor_source(cfg, anchor, structure),
         "topics": [
             {"id": t, "share": _r(share.get(t, 0.0)), **info[t],
-             "central_line": _line(text, chunks[info[t]["central_chunk"]].start),
+             "central_line": _where(text, structure, chunks[info[t]["central_chunk"]].start,
+                                    chunks[info[t]["central_chunk"]].start)["line"],
              "anchor_alignment": _mean_alignment(anchor_b, labels == t, words)}
             for t in sorted(info)
         ],  # fmt: skip
@@ -838,8 +854,7 @@ def _assemble(
         "anchor_score": _mean_alignment(anchor_b, index >= 0, words),
         "anchor_share_above": _share_above(anchor_b, words, cfg["align"]["on_topic_min"]),
         "segments": [
-            {**r, "line": _line(text, chunks[r["start"]].start),
-             "end_line": _line(text, chunks[r["end"]].end),
+            {**r, **_where(text, structure, chunks[r["start"]].start, chunks[r["end"]].end),
              "chunks": r["end"] - r["start"] + 1,
              "words": sum(words[r["start"] : r["end"] + 1]),
              "anchor_alignment": _mean_alignment(
@@ -858,7 +873,7 @@ def _assemble(
     report["chunks"] = [
         {
             "index": c.index, "start": c.start, "end": c.end,
-            "line": _line(text, c.start), "end_line": _line(text, c.end),
+            **_where(text, structure, c.start, c.end),
             "words": c.words, "raw_topic": int(labels[i]), "topic": int(smoothed[i]),
             "kind": kind_of.get(i),
             "anchor_alignment": None if anchor_b is None else _r(anchor_b[i, 0]),
@@ -935,7 +950,9 @@ def _sections(
             "parent_alignment": toward(kin.get("parent", ""), members),
             "sibling_alignment": toward(kin.get("siblings", ""), members),
             "sibling_similarity": _sibling_similarity(structure, part, members, chunks, X),
-            "heading": title, "level": level, "line": _line(text, offset),
+            "heading": title, "level": level, "field": "title",
+            "line": _where(text, structure, offset, offset)["line"],
+            "heading_words": _content_words(title),
             "anchor_alignment": mean_anchor,
             "start": offset, "end": max((c["end"] for c in members), default=offset),
             "chunks": len(members), "words": total,
@@ -948,6 +965,13 @@ def _sections(
         })  # fmt: skip
 
     return _parent_gaps(out, structure)
+
+
+def _content_words(heading: str) -> int:
+    """Words in a heading that are not on the English stop list."""
+    from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+
+    return sum(w not in ENGLISH_STOP_WORDS for w in re.findall(r"[a-z0-9']+", heading.lower()))
 
 
 def _sibling_similarity(
@@ -1327,7 +1351,8 @@ def format_text(result: Result, source: str) -> str:
 
     for s in r["segments"]:
         lines = f"lines {s['line']}-{s['end_line']}"
-        out.append(f"  {lines:<16}topic {s['topic']:>2}  {s['kind']:<11}{s['words']} words")
+        field = f" · {s['section']} {s['field']}".rstrip() if s.get("section") else ""
+        out.append(f"  {lines:<16}topic {s['topic']:>2}  {s['kind']:<11}{s['words']} words{field}")
 
     shifts = [str(chunks[i]["line"]) for i in r["shifts"]]
     out.append("  shifts at lines " + (", ".join(shifts) if shifts else "none"))

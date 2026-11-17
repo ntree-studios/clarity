@@ -54,3 +54,20 @@ def test_unknown_ids_are_an_error_naming_them():
 
         assert code == 2
         assert "nope" in err and "zz" in err
+
+
+def test_a_prefix_picks_the_rule_or_the_category_when_one_name_is_both():
+    global TEXT
+    saved, TEXT = TEXT, "The code knows the schema. The data shows a clear trend."
+
+    try:
+        before = fired()
+        bare = fired("--disable", "false-agency")
+        rule = fired("--disable", "rule:false-agency")
+        category = fired("--disable", "category:false-agency")
+    finally:
+        TEXT = saved
+
+    assert "false-agency" in before and len(before & {"data-agency", "document-source"}) >= 1
+    assert "false-agency" not in rule and before - rule == {"false-agency"}
+    assert bare == category and "false-agency" not in category and len(category) < len(rule)
