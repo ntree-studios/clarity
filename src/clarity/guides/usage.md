@@ -26,7 +26,7 @@ ones available.
 
 `check_text`, `score_text` and `analyze_topics` take two optional lists:
 
-- `disable`: rule ids or category ids to switch off.
+- `disable`: rule ids or category ids to switch off. A few names are both a rule and a category, such as `false-agency`; the bare name means the category. Write `rule:false-agency` or `category:false-agency` to choose.
 - `enable`: rule ids or category ids to switch on, including rules the shipped pack leaves off,
   such as `ease-words`.
 

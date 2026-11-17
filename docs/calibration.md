@@ -303,3 +303,42 @@ The scripts are in `/Users/jim/clarity-corpora/_scripts/calibration/` (the 2026-
 folder), `policy.py` (the verdicts), `sweep.py` (topic settings) and `profile_scores.py`. Each
 runs inside the dev image with the corpora mounted read-only at `/corpora`. `clarity test
 --corpus <genre>/human --against <genre>/ai` gives the same per-rule rates for one genre.
+
+## Re-measure after the plain-text change (2026-11-16)
+
+The rates above were mostly measured when clarity stripped markdown. The corpora contain markdown
+that clarity now reads as plain text. This run used the existing `measure.py` and `policy.py` from
+`_scripts/calibration/` on the seven scored rules plus `count-noun-fragment`, over all eight
+genres (250 documents per side, 252 for business, 87 for technical). No document raised an error.
+
+Rate per 1,000 words, human / AI. A dot means no hits on either side.
+
+| rule | business | creative | encyclopedic | news | opinion-blog | scientific | student-essays | technical |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `abstract-physical-verb-catalogued` | 0.02 / 0.05 | 0.02 / 0.04 | 0.03 / 0.02 | 0.03 / 0.06 | 0.02 / 0.14 | 0.01 / 0.05 | 0.01 / 0.02 | 0.00 / 0.07 |
+| `ai-lexicon-2026` | 0.00 / 0.07 | 0.18 / 0.57 | 0.00 / 0.06 | 0.03 / 0.48 | 0.07 / 0.48 | 0.09 / 0.32 | 0.05 / 1.15 | 0.04 / 0.11 |
+| `ai-lexicon-gpt4o` | 0.13 / 0.59 | 0.03 / 0.01 | 0.08 / 1.24 | 0.11 / 0.58 | 0.03 / 0.07 | 0.50 / 1.60 | 0.24 / 5.64 | 0.04 / 0.22 |
+| `copula-inflation` | . | 0.01 / 0.02 | 0.12 / 0.82 | 0.02 / 0.06 | 0.00 / 0.01 | 0.04 / 0.05 | 0.03 / 0.58 | 0.00 / 0.07 |
+| `count-noun-fragment` | 0.02 / 0.00 | . | . | 0.07 / 0.06 | 0.02 / 0.01 | . | . | 0.04 / 0.00 |
+| `generic-paragraph` | 0.00 / 0.19 | . | . | . | . | 0.00 / 0.01 | 0.08 / 2.06 | 0.00 / 0.02 |
+| `participial-tail` | 0.02 / 0.47 | 0.01 / 0.02 | 0.01 / 3.95 | 0.05 / 0.16 | 0.01 / 0.04 | 0.11 / 0.38 | 0.00 / 1.39 | 0.04 / 0.26 |
+| `recap-closer` | . | . | . | . | . | 0.00 / 0.10 | 0.09 / 0.42 | . |
+
+`policy.py` gives the same verdict as the table above for every rule:
+
+| rule | passes on (ratio) | verdict |
+| --- | --- | --- |
+| `abstract-physical-verb-catalogued` | opinion-blog 8.6x | scored |
+| `ai-lexicon-2026` | creative 3.1x, news 14.7x, opinion-blog 7.3x, scientific 3.4x, student-essays 25.6x | scored |
+| `ai-lexicon-gpt4o` | business 4.5x, encyclopedic 15.9x, news 5.4x, scientific 3.2x, student-essays 23.9x, technical 5.5x | scored |
+| `copula-inflation` | encyclopedic 7.0x, student-essays 17.1x | scored |
+| `count-noun-fragment` | none | experimental |
+| `generic-paragraph` | student-essays 26.1x | scored |
+| `participial-tail` | business 21.5x, encyclopedic 303.7x, news 3.3x, scientific 3.5x, student-essays (no human hits), technical 6.4x | scored |
+| `recap-closer` | scientific (no human hits), student-essays 4.7x | scored |
+
+No verdict would change. The ratios moved a little (`abstract-physical-verb-catalogued` on
+opinion-blog went from 10.5x to 8.6x, and `ai-lexicon-gpt4o` on technical from 6.5x to 5.5x), and
+every scored rule still passes on at least one genre with no genre where people trip it more.
+`count-noun-fragment` fires at least as often on people as on AI in business, news, opinion-blog
+and technical, and no genre reaches 3.0x, so it stays experimental. Verdicts in the table above were not edited.

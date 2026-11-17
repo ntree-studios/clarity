@@ -401,6 +401,66 @@ should_fire:
         Check the insulation in the attic every few years. Insulation that has been flattened by stored boxes or soaked by a roof leak keeps far less heat in the house and should be topped up or replaced.
 should_not_fire:
 - document:
+    title: Insulating an older house
+    sections:
+    - title: The attic
+      text: |-
+        Most heat in an older house escapes through the roof, the walls and gaps around windows and doors. Insulating the attic is usually the cheapest first step and saves the most heat for the money spent.
+
+        Attic insulation is laid between and over the ceiling joists. A thick layer of mineral wool or cellulose insulation keeps warm air in the rooms below and stops the heat from escaping through the roof.
+
+        Before adding insulation to the attic, seal the gaps where pipes, wires and light fittings pass through the ceiling. Warm air leaks through these gaps and carries moisture into the attic, where it can cause damp.
+
+        Walls in an older house often have a hollow cavity that can be filled with insulation. An installer drills small holes in the outer wall, blows insulation into the cavity, and patches the holes afterward.
+    - title: Pricing
+      text: |-
+        Solid walls without a cavity need insulation fixed to the inside or the outside of the wall. Inside wall insulation makes rooms slightly smaller, while outside insulation changes the look of the house.
+
+        Drafts around windows and doors waste heat even in a well insulated house. Fit draft strips around the frames of windows and doors, and seal the gaps between the frames and the walls.
+
+        Old single glazed windows lose heat quickly. Secondary glazing fitted inside the existing windows cuts heat loss and drafts, and it costs much less than replacing every window in the house.
+
+        Insulate the floor of the house if it has a crawl space underneath. Insulation fixed between the floor joists stops cold air from the crawl space chilling the rooms and the floor boards above.
+    - title: Pipes and upkeep
+      text: |-
+        Hot water pipes and the hot water tank lose heat into unheated spaces. Fit foam insulation around exposed pipes and an insulating jacket around the tank to keep the water hot for longer.
+
+        An insulated house needs some fresh air to stay dry. Keep vents in kitchens and bathrooms open, and open windows for a few minutes each day so moisture from cooking and washing can escape.
+
+        After insulating, a house heats up faster and holds its heat longer. Turn the heating thermostat down a degree or two, and the insulation will pay for itself sooner through lower heating bills.
+
+        Check the insulation in the attic every few years. Insulation that has been flattened by stored boxes or soaked by a roof leak keeps far less heat in the house and should be topped up or replaced.
+- document:
+    title: Insulating an older house
+    sections:
+    - title: The attic
+      text: |-
+        Most heat in an older house escapes through the roof, the walls and gaps around windows and doors. Insulating the attic is usually the cheapest first step and saves the most heat for the money spent.
+
+        Attic insulation is laid between and over the ceiling joists. A thick layer of mineral wool or cellulose insulation keeps warm air in the rooms below and stops the heat from escaping through the roof.
+
+        Before adding insulation to the attic, seal the gaps where pipes, wires and light fittings pass through the ceiling. Warm air leaks through these gaps and carries moisture into the attic, where it can cause damp.
+
+        Walls in an older house often have a hollow cavity that can be filled with insulation. An installer drills small holes in the outer wall, blows insulation into the cavity, and patches the holes afterward.
+    - title: How it fits together
+      text: |-
+        Solid walls without a cavity need insulation fixed to the inside or the outside of the wall. Inside wall insulation makes rooms slightly smaller, while outside insulation changes the look of the house.
+
+        Drafts around windows and doors waste heat even in a well insulated house. Fit draft strips around the frames of windows and doors, and seal the gaps between the frames and the walls.
+
+        Old single glazed windows lose heat quickly. Secondary glazing fitted inside the existing windows cuts heat loss and drafts, and it costs much less than replacing every window in the house.
+
+        Insulate the floor of the house if it has a crawl space underneath. Insulation fixed between the floor joists stops cold air from the crawl space chilling the rooms and the floor boards above.
+    - title: Pipes and upkeep
+      text: |-
+        Hot water pipes and the hot water tank lose heat into unheated spaces. Fit foam insulation around exposed pipes and an insulating jacket around the tank to keep the water hot for longer.
+
+        An insulated house needs some fresh air to stay dry. Keep vents in kitchens and bathrooms open, and open windows for a few minutes each day so moisture from cooking and washing can escape.
+
+        After insulating, a house heats up faster and holds its heat longer. Turn the heating thermostat down a degree or two, and the insulation will pay for itself sooner through lower heating bills.
+
+        Check the insulation in the attic every few years. Insulation that has been flattened by stored boxes or soaked by a roof leak keeps far less heat in the house and should be topped up or replaced.
+- document:
     title: How to pull a good espresso shot
     text: |-
       A good espresso shot starts with fresh coffee beans and a burr grinder. Grind the coffee fine, close to the texture of table salt, so the water meets resistance in the basket and the shot runs slowly.

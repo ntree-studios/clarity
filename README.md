@@ -38,7 +38,7 @@ clarity surface [--fields|--enums|--conditions|--metrics|--functions|--categorie
 clarity mcp
 ```
 
-`--disable` and `--enable` take rule ids or category ids, repeated or comma separated. A category id stands for every rule in it. They apply after the config files and the profile. Disables go first, so `--disable structural-tics --enable em-dash` keeps only `em-dash` from that category. `--enable ease-words` turns on a rule the shipped pack leaves off. Switching off a rule also switches off the composite rules built on it. An unknown id is an error, and the message includes the id.
+`--disable` and `--enable` take rule ids or category ids, repeated or comma separated. A category id stands for every rule in it. `false-agency` and `discovery-narration` are each a rule and a category. The bare name means the category. Write `rule:false-agency` or `category:false-agency` to choose. They apply after the config files and the profile. Disables go first, so `--disable structural-tics --enable em-dash` keeps only `em-dash` from that category. `--enable ease-words` turns on a rule the shipped pack leaves off. Switching off a rule also switches off the composite rules built on it. An unknown id is an error, and the message includes the id.
 
 Exit codes: `0` pass, `1` below `--fail-under` (or outside the readability band when `fail_outside_band` is true), `2` error.
 
@@ -176,7 +176,7 @@ clarity trend draft.md --rule corporate-tier-a              # the habit across s
 
 ### Topics and topic shifts
 
-`clarity topics` splits a document into chunks, joins similar chunks in a weighted graph and reads the topics off that graph. It reports the number of topics, each topic's share of the words, its distinctive terms and its most central chunk, the share of the text on the main topic, and the runs of text in order. A run is `main` (on the main topic), `digression` (off the main topic, which returns later) or `drift` (off the main topic, which never returns). Every position is a line number.
+`clarity topics` splits a document into chunks, joins similar chunks in a weighted graph and reads the topics off that graph. It reports the number of topics, each topic's share of the words, its distinctive terms and its most central chunk. It also reports the share of the text on the main topic and the runs of text in order. A run is `main` (on the main topic), `digression` (off the main topic, which returns later) or `drift` (off the main topic, which never returns). Every position is a line number. For a section tree, chunks, segments and sections carry `section` (the path) and `field`, and the line counts inside that field, as findings do.
 
 ```sh
 clarity topics essay.md --anchor "How to pull a good espresso shot"
@@ -714,6 +714,7 @@ Every record also has `start`, `end` and `line`. A query condition is `{field, o
 | --- | --- | --- |
 | `heading` | str | the section's title |
 | `level` | int | the section's depth plus one (the root is 1) |
+| `heading_words` | int | words in the title that are not stop words |
 | `chunks` | int | chunks in the section |
 | `words` | int | words in the section's chunks |
 | `heading_alignment` | float | mean probability the walk from its chunks ends at the heading |

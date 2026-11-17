@@ -22,6 +22,14 @@ should_fire:
   - "Trust is crucial."
   - "Teachers play a role in this."
 ---
+rule: noun-stack-title
+should_fire:
+- {document: {title: "Customer data migration plan"}}
+- {document: {title: "Overview", subtitle: "Quality score threshold rules"}}
+should_not_fire:
+- {document: {title: "Opening hours"}}
+- {document: {title: "Overview", text: "The quality score threshold failed."}}
+---
 rule: recap-opener
 should_not_fire:
   - "The summary is on page two."
@@ -91,7 +99,9 @@ should_fire:
 rule: weak-title
 should_fire:
 - {document: {title: "Two data platform teams, one pricing problem"}}
+- {document: {title: "Two AI use cases, one pricing problem"}}
 should_not_fire:
+- {document: {title: "Platform cost drivers"}}
 - {document: {title: "Opening hours"}}
 - {document: {title: "Three teams, one shared vision"}}
 - {document: {title: "History of the old stone bridge"}}

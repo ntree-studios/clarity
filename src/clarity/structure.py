@@ -294,13 +294,24 @@ def load(path: Path) -> Structure:
 
 
 def parse_doc(nlp: Language, s: Structure) -> Doc:
-    """One spaCy parse of the rendered text, with a sentence starting at every block."""
+    """One spaCy parse of the rendered text, with a sentence starting at every block. The parser
+    may not split a title or subtitle, so each is one sentence."""
     doc = nlp.make_doc(s.text)
     starts = {b.start for b in s.blocks}
+    heads = {b.start: b.end for b in s.blocks if b.field in ("title", "subtitle")}
+    inside = False
+    head_end = 0
 
     for tok in doc:
         if tok.idx in starts and tok.i > 0:
             tok.is_sent_start = True
+
+        if tok.idx in heads:
+            inside, head_end = True, heads[tok.idx]
+        elif inside and tok.idx >= head_end:
+            inside = False
+        elif inside:
+            tok.is_sent_start = False
 
     for _, proc in nlp.pipeline:
         doc = proc(doc)

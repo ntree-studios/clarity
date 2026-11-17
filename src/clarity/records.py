@@ -397,6 +397,7 @@ _topic_set(
     """
     heading: str: the section's title
     level: int: the section's depth plus one (the root is 1)
+    heading_words: int: words in the title that are not stop words
     chunks: int: chunks in the section
     words: int: words in the section's chunks
     heading_alignment: float: mean probability the walk from its chunks ends at the heading

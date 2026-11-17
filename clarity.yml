@@ -118,6 +118,7 @@ rules:
   - id: sig-noun-phrase
     description: "A noun phrase that rates the next point before giving it, such as \"the key thing is\" or \"the interesting part is\". The reader waits through a label and still has to judge the point."
     remediation: "Delete the label and start with the point. \"The key thing is the backup runs at night\" becomes \"The backup runs at night.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: significance-asserting
     max_per_1k: 0
     severity: warning
@@ -131,6 +132,7 @@ rules:
   - id: sig-frame
     description: "A stock opener that announces an answer, such as \"the short answer is\" or \"the real question is\". It adds a clause and tells the reader to pay attention without giving a reason."
     remediation: "Delete the opener and give the answer. \"The short answer is no\" becomes \"No.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: significance-asserting
     max_per_1k: 0
     severity: warning
@@ -140,6 +142,7 @@ rules:
   - id: discovery-narration
     description: "Narration that presents a plain fact as a surprise, using \"it turns out\", \"as it happens\" or \"funnily enough\". The reveal adds drama and no information."
     remediation: "Report the fact plainly. \"It turns out the disk was full\" becomes \"The disk was full.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: discovery-narration
     max_per_1k: 0
     severity: warning
@@ -150,6 +153,7 @@ rules:
   - id: escalation-not-just
     description: "The \"not just X, but Y\" build-up, where the writer sets up a small claim only to top it. The first half gives the reader nothing new, and the shape inflates the second half."
     remediation: "State Y alone, and keep X only if it is news to the reader. \"It's not just fast, it's reliable\" becomes \"It recovers from a crash in two seconds.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: escalation
     backend: structural
     function: escalation_window
@@ -161,6 +165,7 @@ rules:
   - id: escalation-phrase
     description: "Stock escalation phrases such as \"more than that\" or \"and that's before you even consider\". They promise a bigger point and make the reader wait for it."
     remediation: "Delete the phrase and give the next point as its own sentence. \"More than that, it saves money\" becomes \"It also cuts the power bill by a tenth.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: escalation
     max_per_1k: 0
     severity: error
@@ -170,6 +175,7 @@ rules:
   - id: intensifier
     description: "Words such as \"really\", \"truly\", \"genuinely\" or \"notably\" that add emphasis and no facts. This is a general style rule that fires past one per thousand words. Used often, these words make every claim sound equally loud, so none of them stand out."
     remediation: "Cut the word, or put the evidence in its place. \"This is really fast\" becomes \"This page loads in 40 ms.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: intensifiers
     max_per_1k: 1
     severity: warning
@@ -180,6 +186,7 @@ rules:
   - id: intensifier-frame
     description: "\"To be clear\" and \"make no mistake\", which tell the reader to take the next sentence seriously. They add no facts and can sound as if the writer is talking down."
     remediation: "Delete the frame and keep the sentence. \"To be clear, the deadline is Friday\" becomes \"The deadline is Friday.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: intensifiers
     max_per_1k: 0
     severity: error
@@ -190,6 +197,7 @@ rules:
   - id: filler-worth-noting
     description: "\"It's worth noting\" and its variants, which tell the reader a sentence deserves attention before giving it."
     remediation: "Delete the phrase and start with the content. \"It's worth noting that the API is slow\" becomes \"The API is slow.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: filler-transitions
     max_per_1k: 0
     severity: error
@@ -199,6 +207,7 @@ rules:
   - id: filler-transition
     description: "Clause openers such as \"that said\", \"ultimately\", \"when it comes to\" and \"in terms of\" that link sentences without adding meaning. A few are normal; the rule fires past one per thousand words."
     remediation: "Delete the opener, or use a word that states the logic, such as \"but\", \"so\" or \"because\". \"When it comes to pricing, we charge monthly\" becomes \"We charge monthly.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: filler-transitions
     max_per_1k: 1
     severity: warning
@@ -209,6 +218,7 @@ rules:
   - id: corporate-tier-a
     description: "Corporate buzzwords such as \"leverage\", \"seamless\", \"robust\", \"game-changer\" and \"a testament to\". They sound like marketing and tell the reader little about what the thing does."
     remediation: "Use the plain word or the specific fact. \"We leverage the cache\" becomes \"We use the cache\", and \"a seamless upgrade\" becomes \"an upgrade with no downtime\"."
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: corporate-vocabulary
     max_per_1k: 1
     severity: warning
@@ -219,6 +229,7 @@ rules:
   - id: corporate-tier-b
     description: "\"Delve into\", \"dive into\" and \"navigate\" with an abstract object, or \"landscape of\", \"realm of\", \"tapestry of\" and \"ecosystem of\" before an abstract noun. The metaphor is vague and the reader has to guess the literal meaning."
     remediation: "Say the literal action or thing. \"We dive into the results\" becomes \"We compare the results by region\", and \"the landscape of payments\" becomes \"payment companies\"."
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: corporate-vocabulary
     backend: dependency
     max_per_1k: 0
@@ -239,6 +250,7 @@ rules:
   - id: figurative-cost
     description: "The verb \"cost\" used for anything other than a price, as in \"the bug cost us trust\" or \"a missing comma costs points\". The reader has to work out what happens."
     remediation: "Say what happens. For a score, write \"lowers the score\": \"A missing comma costs points\" becomes \"A missing comma lowers the score.\" For people, say what they do: \"The delay cost us trust\" becomes \"Two clients asked for weekly updates after the delay.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: corporate-vocabulary
     backend: structural
     function: figurative_cost
@@ -249,6 +261,7 @@ rules:
   - id: rule-of-three
     description: "Two or more lists of three in one paragraph, such as \"fast, cheap, and reliable\" next to \"clear, simple, and bold\". One triad is normal; a habit of them reads as rhythm for its own sake. AI-written essays and opinion pieces use the habit several times as often as people do. Titles and list items count as separate blocks, and plain lists of things are skipped."
     remediation: "Keep only the items you can back with a fact, or replace the list with one specific claim. \"It is fast, cheap, and reliable\" becomes \"It answers in 50 ms.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: structural-tics
     backend: structural
     function: rule_of_three
@@ -269,9 +282,15 @@ rules:
     confidence: exact
     message: Stock title shape. A title should state the point of its section in plain words.
     pattern:
-      # "Pricing: simple plans, built for growth" (a short label, a colon, then a claim)
+      # "Pricing: simple plans, built for growth" (a short label, a colon, then a claim). The
+      # part after the colon must hold a promotional word, so a factual title such as
+      # "Billing schedule: each invoice follows a deliverable, then a payment" is left alone.
       - [{IS_SENT_START: true, IS_PUNCT: false}, {IS_PUNCT: false, OP: "{0,2}"}, {ORTH: ":"},
-         {IS_PUNCT: false, OP: "{2,}"}, {ORTH: {IN: [",", ";", "\u2014", "\u2013"]}}]
+         {IS_PUNCT: false, OP: "{0,4}"},
+         {LOWER: {IN: [simple, simpler, powerful, seamless, seamlessly, effortless, effortlessly,
+           smart, smarter, faster, better, built, designed, crafted, reimagined, modern,
+           scalable, scale, growth, future]}},
+         {IS_PUNCT: false, OP: "*"}, {ORTH: {IN: [",", ";", "\u2014", "\u2013"]}}]
       # "Three teams, one shared vision" / "Three teams. One vision."
       - [{LIKE_NUM: true}, {IS_PUNCT: false, OP: "{1,3}"}, {ORTH: {IN: [",", ".", ";", ":", "\u2014", "\u2013"]}}, {LOWER: {IN: [one, a, single]}},
          {IS_PUNCT: false, OP: "{1,3}"}]
@@ -323,7 +342,7 @@ rules:
     message: Weak title. Two or more signs that it sounds like a point without stating one.
     requires_any:
       - {rule: stock-title-shape}
-      - {rule: noun-stacking}
+      - {rule: noun-stack-title}
       - {rule: function-word-ratio}
     min_any: 2
   - id: fragment-triad
@@ -341,6 +360,7 @@ rules:
   - id: question-then-answer
     description: "A rhetorical question followed at once by an answer that repeats its words, as in \"Why does the cache fail? The cache fails because...\". The question adds a sentence and no information."
     remediation: "Drop the question and keep the answer. \"Why does it fail? It fails because keys go stale\" becomes \"The cache fails because keys go stale.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: structural-tics
     backend: structural
     function: question_answer
@@ -352,6 +372,7 @@ rules:
   - id: section-restatement
     description: "A section whose last sentence repeats its first. The reader gets the same point twice and no conclusion."
     remediation: "Cut the closing sentence, or replace it with a result or next step the section has not given yet."
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: redundancy
     backend: structural
     function: section_restatement
@@ -364,6 +385,7 @@ rules:
   - id: x-rather-than-y
     description: "The \"X rather than Y\" contrast. One is fine; past one per thousand words it becomes a habit of defining each choice by the option the writer turned down."
     remediation: "Say what was chosen and why, and mention the other option only if the reader expected it. \"We chose speed rather than safety\" becomes \"We chose speed because the demo is on Monday.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: structural-tics
     max_per_1k: 1
     severity: warning
@@ -374,6 +396,7 @@ rules:
   - id: trailing-negation
     description: "Defines a thing by denying something nobody claimed: \"X, not Y\", \"isn't X, it's Y\", \"not X but Y\", \"explains, never decides\" and \"reviews instead of rewriting\". AI-written text uses it several times more often than people do."
     remediation: "Say what the thing is and cut the denial. Keep a \"not\" only when a reader would otherwise believe the denied claim. \"It's a guide, not a rulebook\" becomes \"It's a guide.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: structural-tics
     max_per_1k: 0
     severity: warning
@@ -409,6 +432,7 @@ rules:
   - id: which-is-exactly
     description: "An emphatic tag such as \"which is exactly what we need\" or \"which is the point\". It tells the reader to agree without showing why."
     remediation: "End the sentence at the fact, and give the reason in its own sentence if one is needed. \"The cache halves load, which is exactly the point\" becomes \"The cache halves load.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: structural-tics
     max_per_1k: 0
     severity: warning
@@ -418,6 +442,7 @@ rules:
   - id: em-dash
     description: "An em dash or en dash used as punctuation. Heavy use breaks sentences into asides, and many readers now take frequent dashes as a sign of generated text."
     remediation: "Use a comma, a colon or a period in place of the dash, or parentheses for a true aside. Write \"The fix was one line, and it shipped today.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: structural-tics
     backend: structural
     function: em_dash
@@ -429,6 +454,7 @@ rules:
   - id: hedge
     description: "Hedges such as \"arguably\", \"somewhat\", \"can help to\" and \"one of the most\". This is a general style rule that fires past two per thousand words. Too many make the writer sound unsure of every claim."
     remediation: "Drop the hedge when you are sure, or say what the doubt is. \"This can help to reduce errors\" becomes \"This cut errors by a third in March.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: hedges
     max_per_1k: 2
     severity: info
@@ -438,6 +464,7 @@ rules:
   - id: hedge-stacking
     description: "Two or more hedges in one clause, as in \"arguably somewhat faster\" or \"can help to typically reduce\". Each one weakens the claim until the reader cannot tell what the writer believes."
     remediation: "Keep at most one hedge, the one that states the real doubt. \"This can arguably help to reduce errors\" becomes \"This may reduce errors.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: hedges
     backend: structural
     function: hedge_stacking
@@ -452,6 +479,7 @@ rules:
   - id: false-balance-while
     description: "The concession \"While X, it is also true that Y\". It puts two claims side by side and never says which one the writer accepts."
     remediation: "Say which claim wins and why. \"While speed is good, it is also true that safety is good\" becomes \"Safety comes first, so we accept a slower release.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: false-balance
     backend: dependency
     max_per_1k: 0
@@ -467,6 +495,7 @@ rules:
   - id: false-balance-phrase
     description: "\"There's no one-size-fits-all\" and its variants. The phrase avoids an answer while sounding like one."
     remediation: "Give the options and say when each one fits. \"There's no one-size-fits-all plan\" becomes \"Teams under ten people should use the free tier.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: false-balance
     match: lower
     max_per_1k: 0
@@ -477,6 +506,7 @@ rules:
   - id: it-depends-conclusion
     description: "A section that ends on \"It depends.\" The reader reaches the end with no answer."
     remediation: "Say what it depends on and give the answer for each case. \"It depends.\" becomes \"Use the small plan below 1,000 users and the large plan above that.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: false-balance
     backend: structural
     function: it_depends_final
@@ -488,6 +518,7 @@ rules:
   - id: false-agency
     description: "An inanimate subject with a verb that needs a person, such as \"the strategy believes\" or \"the market wants\". The reader cannot tell who holds the belief or made the choice."
     remediation: "Put the real actor in the subject. \"The plan decided to close the office\" becomes \"The board decided to close the office.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: false-agency
     backend: dependency
     max_per_1k: 0
@@ -507,6 +538,7 @@ rules:
   - id: document-source
     description: "A document as the speaker, as in \"the report says\" or \"the contract states\". This is standard English; the rule fires only past four per thousand words, where the reader loses track of who wrote what."
     remediation: "Give the author when it helps, and vary the form. \"The study argues that...\" becomes \"The authors argue that...\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: false-agency
     backend: dependency
     max_per_1k: 4
@@ -522,6 +554,7 @@ rules:
   - id: data-agency
     description: "Data as the speaker, as in \"the data suggest\" or \"the results show\". This is standard English; the rule fires only past two per thousand words, where it hides who drew the conclusion."
     remediation: "Give the number, or say who read the data that way. \"The data suggest demand is falling\" becomes \"Orders fell 8% in May.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: false-agency
     backend: dependency
     max_per_1k: 2
@@ -537,6 +570,7 @@ rules:
   - id: data-agency-agentive
     description: "Data given wants, feelings or senses, as in \"the numbers want to go up\" or \"the evidence refuses to fit\". The figure of speech hides who drew the conclusion."
     remediation: "State the finding and who made it. \"The data refuses to support the plan\" becomes \"Sales fell in both test cities, so we dropped the plan.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: false-agency
     backend: dependency
     max_per_1k: 0
@@ -564,6 +598,7 @@ rules:
   - id: nominalization
     description: "Verbs turned into nouns ending in -tion, -ment, -ance, -ence, -ity or -ness, as in \"make a decision\" or \"the implementation of\". This is a general style rule. Heavy use hides the action and lengthens sentences."
     remediation: "Use the verb. \"We made a decision to start the implementation\" becomes \"We decided to build it.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: verbosity
     backend: structural
     function: nominalization
@@ -575,6 +610,7 @@ rules:
   - id: expletive-construction
     description: "A sentence that opens with \"there is\" or \"it is\" and pushes the real subject later. This is a general style rule. The opener adds words and delays the actor."
     remediation: "Start with the real subject. \"There are three bugs in the parser\" becomes \"The parser has three bugs.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: verbosity
     backend: structural
     function: expletive_construction
@@ -621,6 +657,7 @@ rules:
   - id: intro-transition-comma
     description: "A transitional opener such as \"However\" or \"For example\" with no comma after it. The reader may misread where the main clause starts."
     remediation: "Add the comma. \"However the build failed\" becomes \"However, the build failed.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: sentence-flow
     backend: structural
     function: intro_transition_comma
@@ -695,6 +732,7 @@ rules:
   - id: adjective-density
     description: "More than 0.6 adjectives per noun in a sentence. This is a general style rule. Piled-up description slows the reader and blurs the nouns."
     remediation: "Keep the adjective that adds a fact and cut the rest. \"The big bright red car\" becomes \"The red car.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: sentence-flow
     backend: structural
     function: adjective_density
@@ -706,6 +744,7 @@ rules:
   - id: adjective-stack
     description: "Three or more adjectives in a row before one noun, as in \"a fast, simple, modern tool\". The reader has to weigh each one, and most add little."
     remediation: "Keep one adjective, or replace the stack with a fact. \"A fast, simple, modern tool\" becomes \"A tool that installs in one step.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: sentence-flow
     backend: structural
     function: stacked_adjectives
@@ -717,6 +756,7 @@ rules:
   - id: framing-noun-phrase
     description: "A phrase that labels the next claim before making it, such as \"the honest answer is\", \"the simple truth is\" or \"the short version is\". It tells the reader how to take the sentence and delays it."
     remediation: "Delete the frame and start with the claim. \"The honest answer is we don't know\" becomes \"We don't know.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: self-framing
     next_lemma: [be]
     max_per_1k: 0
@@ -730,6 +770,7 @@ rules:
   - id: framing-adverbial
     description: "Clause openers such as \"honestly\", \"frankly\", \"to be fair\" and \"put simply\" that announce the tone of the sentence. They imply that the rest of the text is less honest or less plain."
     remediation: "Delete the opener. \"Frankly, the plan is late\" becomes \"The plan is late.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: self-framing
     position: clause-initial
     max_per_1k: 0
@@ -743,6 +784,7 @@ rules:
   - id: framing-meta
     description: "Phrases that talk about the sentence, such as \"what this means is\", \"in other words\" and \"let me be clear\". They put a step between the reader and the point."
     remediation: "Delete the phrase and say the thing once. If a second wording seems needed, rewrite the first one. \"What this means is the build is slow\" becomes \"The build is slow.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: self-framing
     max_per_1k: 0
     severity: error
@@ -754,6 +796,7 @@ rules:
   - id: names-verb
     description: "The verb \"names\" or \"naming\" used vaguely, as in \"the error names the rule\". The reader cannot tell whether the text shows, lists, blames or picks the thing."
     remediation: "Use a verb that tells what happens. \"The report names the culprit\" becomes \"The report shows which commit broke the build.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: self-framing
     max_per_1k: 0
     severity: error
@@ -764,6 +807,7 @@ rules:
   - id: self-repetition
     description: "A phrase of two to four words that the writer repeats three or more times, at least 40 words apart. Terms and proper nouns are skipped; what remains reads as a verbal habit."
     remediation: "Keep the phrase in the one place where it says the most. Elsewhere, use a more exact wording or cut it."
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: redundancy
     backend: structural
     function: repeated_ngram
@@ -783,6 +827,7 @@ rules:
   - id: passive-agentless
     description: "Passive voice with no actor, as in \"mistakes were made\". This is a general style rule; models write fewer passives than people do. Past two per thousand words, the reader often cannot tell who did what."
     remediation: "Say who did it and put them first. \"The server was restarted\" becomes \"Ana restarted the server.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: construction
     backend: structural
     function: passive_agentless
@@ -793,6 +838,7 @@ rules:
   - id: passive-with-agent
     description: "Passive voice that gives the actor after \"by\", as in \"the bug was found by Ana\". This is a general style rule. The sentence runs longer than the active form and puts the actor last."
     remediation: "Put the actor first. \"The bug was found by Ana\" becomes \"Ana found the bug.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: construction
     backend: structural
     function: passive_with_agent
@@ -803,6 +849,7 @@ rules:
   - id: adverb-propped-verb
     description: "A weak verb such as \"walk\", \"go\" or \"make\" with an adverb that supplies the meaning, as in \"walked slowly\". This is a general style rule. One exact verb is shorter and clearer."
     remediation: "Use a stronger verb. \"He walked slowly to the door\" becomes \"He shuffled to the door.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: construction
     backend: structural
     function: adverb_propped_verb
@@ -814,6 +861,7 @@ rules:
   - id: noun-stacking
     description: "Three or more nouns in a row, with the first ones acting as modifiers, as in \"quality score threshold\". The reader has to work out how each noun relates to the next."
     remediation: "Turn some of the nouns into a phrase with \"of\", \"for\" or a verb. \"The customer data migration plan\" becomes \"The plan to move customer data.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: construction
     backend: structural
     function: compound_chain
@@ -825,6 +873,7 @@ rules:
   - id: preposition-chain
     description: "Four or more prepositional phrases nested in one sentence, as in \"the cause of the delay in the release of the update for the app\". The reader loses track of what modifies what."
     remediation: "Break the chain with a verb or a second sentence. \"The cause of the delay in the release of the update\" becomes \"The update shipped late because the tests failed.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: construction
     backend: structural
     function: nested_prep_depth
@@ -849,6 +898,7 @@ rules:
   - id: weasel-attribution
     description: "Claims credited to unnamed sources, such as \"studies show\", \"experts say\" and \"many believe\". The reader cannot check or judge the source. The rule skips a phrase with a name close by."
     remediation: "Give the source, or state the claim as your own with the evidence. \"Studies show sleep helps memory\" becomes \"A 2019 study of 200 students found that sleep helped recall.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: construction
     suppress_if:
       - near: {pos: PROPN, within: 10}
@@ -862,6 +912,7 @@ rules:
   - id: double-negation
     description: "Two negatives in one clause, as in \"not uncommon\" or \"never fails to\". The reader has to cancel them out to get the meaning."
     remediation: "State it positively. \"It never fails to start\" becomes \"It always starts.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: construction
     backend: structural
     function: two_neg_in_clause
@@ -873,6 +924,7 @@ rules:
   - id: tautology
     description: "Redundant pairs such as \"end result\", \"past history\", \"close proximity\" and \"each and every\". One word repeats the other."
     remediation: "Drop the extra word. \"The end result\" becomes \"The result.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: redundancy
     max_per_1k: 0
     severity: error
@@ -886,6 +938,7 @@ rules:
   - id: topic-drift
     description: "The point where a text leaves its main topic and never comes back. It reads only text long enough for topic analysis and skips documents split into sections."
     remediation: "Cut the drifting part or move it to its own section or document. If it belongs, tie it to the main topic in its first sentence."
+    applies_to: [title, subtitle, text, items]  # findings sit on chunks and headings of the topic report
     category: topic-structure
     backend: structural
     function: query
@@ -905,6 +958,7 @@ rules:
   - id: topic-digression
     description: "A run of chunks that leaves the main topic and then returns to it. The reader loses the thread and has to find it again."
     remediation: "Move the digression to a note, an appendix or its own section, or cut it."
+    applies_to: [title, subtitle, text, items]  # findings sit on chunks and headings of the topic report
     category: topic-structure
     backend: structural
     function: query
@@ -924,6 +978,7 @@ rules:
   - id: off-topic-share
     description: "A text where more than 30% of the words are far from the topic of its title or anchor. Much of the length goes to something other than the stated subject."
     remediation: "Retitle the text to match what it covers, or cut the parts that stray from the title."
+    applies_to: [title, subtitle, text, items]  # findings sit on chunks and headings of the topic report
     category: topic-structure
     backend: structural
     function: query
@@ -940,6 +995,7 @@ rules:
   - id: section-off-parent
     description: "A section of 20 or more words that shares almost no vocabulary with the sections beside it. It may belong in another document, or it may use different words for the same subject."
     remediation: "Move the section where it belongs, or link it to its neighbors in its first sentence using their terms."
+    applies_to: [title, subtitle, text, items]  # findings sit on chunks and headings of the topic report
     category: topic-structure
     backend: structural
     function: query
@@ -958,6 +1014,7 @@ rules:
   - id: orphan-paragraph
     description: "A paragraph with weak links to every topic in the text. It reads as an aside the reader cannot place."
     remediation: "Connect it to the topic it supports, move it next to related paragraphs, or cut it."
+    applies_to: [title, subtitle, text, items]  # findings sit on chunks and headings of the topic report
     category: topic-structure
     backend: structural
     function: query
@@ -974,6 +1031,7 @@ rules:
   - id: section-heading-mismatch
     description: "A section whose body does not match its heading. Role headings such as \"Overview\" or \"Summary\" are skipped. The reader expects one subject and gets another."
     remediation: "Rewrite the heading to say what the section covers, or move the body under the right heading."
+    applies_to: [title, subtitle, text, items]  # findings sit on chunks and headings of the topic report
     category: topic-structure
     backend: structural
     function: query
@@ -986,6 +1044,9 @@ rules:
       where:
         - {field: chunks, op: gte, value: 2}
         - {field: heading_alignment, op: lt, value: 0.3}  # uncalibrated
+        # A heading of one or two content words ("Pricing", "How it fits together") names a
+        # role or a topic too small to share words with the body. A word list cannot name them all.
+        - {field: heading_words, op: gte, value: 3}
         # Functional headings name a role, not a subject, so their words rarely appear in the
         # body. All seven findings on pre-2020 Wikipedia were headings like these.
         - field: heading
@@ -996,6 +1057,7 @@ rules:
   - id: wandering-paragraph
     description: "A paragraph of four or more sentences whose second half shares almost no words with its first half. It probably holds two topics."
     remediation: "Split it into two paragraphs, one per topic, each with its own opening sentence."
+    applies_to: [title, subtitle, text, items]  # findings sit on chunks and headings of the topic report
     category: topic-structure
     backend: structural
     function: query
@@ -1012,6 +1074,7 @@ rules:
   - id: focus-gap-section
     description: "A section that uses none of the focus keywords you supplied and is far from the anchor topic. It runs only when you pass focus keywords."
     remediation: "Bring the section back to the focus terms, or cut it if the document does not need it."
+    applies_to: [title, subtitle, text, items]  # findings sit on chunks and headings of the topic report
     category: topic-structure
     backend: structural
     function: query
@@ -1036,6 +1099,7 @@ rules:
     description: "Chat-assistant text left in a draft, such as \"I hope this helps\", \"Certainly!\" or \"as an AI language model\". Readers can tell the text was pasted from a chat. A phrase inside quotation marks is skipped."
     remediation: "Delete the line, along with any offer to revise or any greeting to the reader."
     experimental: true  # until calibrated on the corpora (task 7)
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: artifacts
     max_per_1k: 0
     severity: error
@@ -1053,6 +1117,7 @@ rules:
     description: "An unfilled placeholder such as \"[Your name]\", \"INSERT_DATE\", \"2026-XX-XX\", \"example.com/\" or \"delete this section before submission\". The reader sees a draft that nobody finished."
     remediation: "Put in the real value, or delete the line. \"Best, [Your name]\" becomes \"Best, Sam.\""
     experimental: true  # until calibrated on the corpora (task 7)
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: artifacts
     max_per_1k: 0
     severity: error
@@ -1067,6 +1132,7 @@ rules:
     description: "Phrases that announce importance, such as \"why this matters\", \"the trap is\", \"the whole point is\" or a closing \"Full stop.\" They ask for the reader's attention and give no reason."
     remediation: "Delete the frame and state the consequence. \"Why this matters: users lose data\" becomes \"Users lose any unsaved notes when the app closes.\""
     experimental: true  # until calibrated on the corpora (task 7)
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: significance-asserting
     max_per_1k: 0
     severity: warning
@@ -1078,6 +1144,7 @@ rules:
   - id: what-matters
     description: "The \"what matters\" family: \"what really matters is\", \"all that matters\", \"the fixes that matter most\" and a bare \"This matters.\" It ranks a point and gives no reason. AI-written text uses it far more often than people do, Claude most of all."
     remediation: "Say the thing and its consequence. \"What matters is uptime\" becomes \"Each hour of downtime loses about 200 orders.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: significance-asserting
     max_per_1k: 0
     severity: warning
@@ -1093,6 +1160,7 @@ rules:
     description: "Social-media hooks such as \"let that sink in\", \"here's the kicker\", \"plot twist:\" and \"in today's fast-paced world\". They ask for attention and give no information."
     remediation: "Cut the hook and give the fact. \"Here's the kicker: it was free\" becomes \"It was free.\""
     experimental: true  # until calibrated on the corpora (task 7)
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: structural-tics
     max_per_1k: 0
     severity: warning
@@ -1106,6 +1174,7 @@ rules:
     description: "Lines that disclaim the sources, such as \"based on the available information\" or \"there is limited information\". They are typical of search-assisted chat answers and tell the reader nothing about the subject."
     remediation: "State what is known and cite it, or leave the topic out. \"Based on available information, the shop has 50 staff\" becomes \"The shop had 50 staff in 2025, by its own annual report.\""
     experimental: true  # until calibrated on the corpora (task 7)
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: hedges
     max_per_1k: 0
     severity: warning
@@ -1120,6 +1189,7 @@ rules:
     description: "Stiff words such as \"utilize\", \"commence\", \"facilitate\" and \"pass away\" where a plain word fits. They make the text sound formal and padded."
     remediation: "Use the plain word: use, start, help, try, move, died, wrote. \"We will commence testing\" becomes \"We will start testing.\""
     experimental: true  # until calibrated on the corpora (task 7)
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: verbosity
     max_per_1k: 1
     severity: info
@@ -1131,6 +1201,7 @@ rules:
   - id: ease-words
     description: "Words such as \"simply\", \"easily\", \"just\" and \"of course\" that call a step easy. A reader who finds the step hard then blames themselves. The rule is off by default and the technical profile turns it on."
     remediation: "Delete the word. \"Simply run the installer\" becomes \"Run the installer.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: intensifiers
     enabled: false     # on only in the technical profile (Google developer style guide)
     max_per_1k: 0
@@ -1151,6 +1222,7 @@ rules:
     description: "Words that models of 2023 to mid-2024 overused, such as \"delve\", \"intricate\", \"meticulous\", \"pivotal\", \"vibrant\", \"showcase\" and \"testament\". AI text used them far more often than people on several corpora, but creative and opinion writers use them too."
     remediation: "Use a plain word or the specific thing. \"A vibrant, multifaceted city\" becomes \"A city with 40 theaters and a busy port.\""
     experimental: true  # until calibrated on the corpora (task 7)
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: corporate-vocabulary
     max_per_1k: 1
     severity: warning
@@ -1165,6 +1237,7 @@ rules:
   - id: ai-lexicon-gpt4o
     description: "Verbs that models of mid-2024 to mid-2025 overused: \"foster\", \"highlight\", \"enhance\", \"emphasize\" and \"align with\". AI text used them several times as often as people on most of the test corpora."
     remediation: "Say what happened. \"The report highlights the risk\" becomes \"The report lists three risks.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: corporate-vocabulary
     max_per_1k: 1
     severity: warning
@@ -1177,6 +1250,7 @@ rules:
     description: "Notability boilerplate from models of mid-2025 to mid-2026, such as \"maintains an active social media presence\", \"has been widely covered\" and \"independent coverage\". It claims press attention and never says what the articles reported."
     remediation: "Say what the articles reported and cite them. \"The band has been widely covered\" becomes \"A city paper reviewed the band's first album in 2024.\""
     experimental: true  # until calibrated on the corpora (task 7)
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: corporate-vocabulary
     max_per_1k: 0
     severity: warning
@@ -1188,6 +1262,7 @@ rules:
   - id: ai-lexicon-2026
     description: "Words that recent models overuse, from editor observation in mid-2026: \"dependable\", \"prioritize\", \"quietly\", \"steady\" and \"universally\". One alone is fine; a cluster reads as generated. AI text used them several times as often as people on most of the test corpora."
     remediation: "Put the specific fact in place of the word. \"The team quietly shipped a steady stream of fixes\" becomes \"The team shipped 12 fixes in May.\""
+    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: corporate-vocabulary
     max_per_1k: 2
     severity: info
@@ -1199,6 +1274,7 @@ rules:
   - id: participial-tail
     description: "A sentence that ends in an \"-ing\" clause asserting significance, such as \", highlighting the importance of...\" or \", reflecting its role in...\". Of all the rules, this one separates AI text from human text most clearly."
     remediation: "End the sentence at the fact. Then say what follows from it in a new sentence, with evidence. \"Sales rose, reflecting strong demand\" becomes \"Sales rose 12%. Orders came in faster than the warehouse could pack them.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: significance-asserting
     backend: dependency
     max_per_1k: 0
@@ -1215,6 +1291,7 @@ rules:
   - id: copula-inflation
     description: "\"Serves as\", \"stands as\", \"boasts\" or \"holds the distinction\" where \"is\" or \"has\" would do, as in \"the museum serves as a reminder of the war\". AI-written articles and essays use these far more often than people do. Roles such as \"she served as treasurer\" are skipped."
     remediation: "Use the plain verb. \"The hotel boasts 200 rooms\" becomes \"The hotel has 200 rooms.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: construction
     backend: dependency
     max_per_1k: 0
@@ -1242,6 +1319,7 @@ rules:
     description: "Dead metaphors from the strong-evidence list, which describe an idea with words for physical labor. Examples are \"load-bearing\", \"does the heavy lifting\", \"does most of the work\" and \"earns its place\". The reader gets an image and no mechanism."
     remediation: "Say what the thing does. \"This clause does the heavy lifting\" becomes \"This clause sets the price.\""
     experimental: true  # until calibrated on the corpora (task 7)
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: false-agency
     backend: dependency
     max_per_1k: 0
@@ -1276,6 +1354,7 @@ rules:
   - id: abstract-physical-verb-catalogued
     description: "Physical verbs on abstract subjects, from a catalogue of known tics. Examples are \"the plan holds\", \"the joke lands\", \"the risk lives in\", \"turns every complaint into\" and \"a lot rides on\". AI opinion writing uses them several times as often as people do. Code nouns that literally hold values, such as \"variable\" and \"cache\", are skipped."
     remediation: "Say in literal terms what the thing does. \"The plan holds\" becomes \"The plan still meets the June date.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: false-agency
     backend: dependency
     max_per_1k: 0
@@ -1336,6 +1415,7 @@ rules:
     description: "Possible dead metaphors seen in user drafts: \"that tracks\", \"the point stands\", \"checks out\", \"sits in\" and \"maps to\". Some uses are literal, so treat a finding as a prompt to check."
     remediation: "Say what the thing does. \"That tracks\" becomes \"That matches the March numbers\", and \"where this sits in the roadmap\" becomes \"when we build this\"."
     experimental: true  # until calibrated on the corpora (task 7)
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: false-agency
     backend: dependency
     max_per_1k: 0
@@ -1402,6 +1482,17 @@ rules:
     message: An evaluative word that asserts importance.
     phrases: [crucial, vital, pivotal, essential, key role, significant role, important role, play a role,
       significant impact, profound, landscape, ensure, enhance, foster, paramount, invaluable, transformative]
+  - id: noun-stack-title
+    description: "Marker rule, never reported. It finds three or more stacked nouns in a title or subtitle, as in \"quality score threshold\", for the composite weak-title."
+    remediation: "Turn some of the nouns into a phrase with \"of\", \"for\" or a verb."
+    applies_to: [title, subtitle]
+    category: composite
+    marker: true
+    backend: structural
+    function: compound_chain
+    max_per_1k: 0
+    message: Three or more nouns stacked as modifiers in a title.
+    params: {min_length: 3}
   - id: recap-opener
     description: "Marker rule, never reported. It finds sentence openers that announce a summary, such as \"In conclusion\", \"Overall\", \"To sum up\" and \"In the end\", for the composite recap-closer."
     remediation: "Drop the opener. End on the last new point or on the decision."
@@ -1445,6 +1536,7 @@ rules:
   - id: generic-paragraph
     description: "A paragraph with two or more words that assert importance, such as \"crucial\", \"pivotal\" or \"plays a key role\", and no number, name, quotation or example. AI-written essays contain it far more often than human essays."
     remediation: "Add the specific fact that shows the importance, or cut the paragraph. \"Trust plays a vital role in teams\" becomes \"Teams that skipped the weekly review missed twice as many deadlines.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: composite
     backend: composite
     count_scope: paragraph
@@ -1460,6 +1552,7 @@ rules:
   - id: recap-closer
     description: "A recap sentence that also asserts importance, as in \"In conclusion, X plays a crucial role\". It repeats the text and adds nothing. AI-written essays and science papers use it several times as often as people do."
     remediation: "End on the last new point, or give the decision. Delete \"In conclusion, testing is vital\" and end on the test result."
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: composite
     backend: composite
     count_scope: sentence
@@ -1476,6 +1569,7 @@ rules:
   - id: comparison-no-verdict
     description: "A document that uses both-sides phrases twice or more, such as \"on the one hand\" and \"pros and cons\", and never recommends anything. The reader wanted to know which to pick and gets no answer."
     remediation: "Give a recommendation and say when it applies. \"Both have their merits\" becomes \"Use A unless you need offline mode; then use B.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: composite
     backend: composite
     count_scope: document
@@ -1491,6 +1585,7 @@ rules:
   - id: unquantified-claim
     description: "A sentence that claims a size or change with no number, as in \"sales improved significantly\". The reader cannot judge how big the change was."
     remediation: "Give the figure and what it is compared with. \"Sales improved significantly\" becomes \"Sales rose 15% over last year.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: composite
     backend: composite
     count_scope: sentence

@@ -99,6 +99,24 @@ def _bare(tok: Token) -> bool:
     return tok.pos_ in {"NOUN", "PROPN"} and not any(c.dep_ in _MODIFIERS for c in tok.children)
 
 
+def _noun_phrase(tok: Token, first: bool) -> bool:
+    """A short phrase made only of nouns: a head noun with at most one bare noun before it, as in
+    "field names". The first item of a list may also open with a determiner."""
+    if tok.pos_ not in {"NOUN", "PROPN"}:
+        return False
+
+    others = [c for c in tok.children if not (first and c.dep_ == "det")]
+
+    return len(others) <= 1 and all(c.dep_ == "compound" and _bare(c) for c in others)
+
+
+def _plain_list(members: list[Token]) -> bool:
+    """True when every member is a bare noun or a short all-noun phrase."""
+    lead = min(m.i for m in members)
+
+    return all(_noun_phrase(m, m.i == lead) for m in members)
+
+
 @register
 def rule_of_three(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
     spans: list[CharSpan] = []
@@ -117,7 +135,7 @@ def rule_of_three(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
         if len(members) < int(rule.params.get("chain_length", 3)):
             continue
 
-        if rule.params.get("skip_plain_lists", False) and all(_bare(m) for m in members):
+        if rule.params.get("skip_plain_lists", False) and _plain_list(members):
             continue  # "region, month, and team" lists things; it has no rhythm to flag
 
         start = min(m.left_edge.i for m in members)

@@ -228,26 +228,41 @@ def switches(
     ]
 
 
+def _split_prefix(raw: str) -> tuple[str | None, str]:
+    """("rule", "x") for "rule:x", ("category", "x") for "category:x", (None, raw) otherwise."""
+    kind, sep, name = raw.partition(":")
+
+    return (kind, name) if sep and kind in ("rule", "category") else (None, raw)
+
+
 def _expand_switches(merged: dict[str, Any], items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """A category id becomes one item per rule in that category. A name that is both a category
-    and a rule means the category. Unknown ids are an error that lists them all. A composite
-    rule whose member is switched off goes off with it, since it cannot run without it."""
+    """A category id becomes one item per rule in that category. A bare name that is both a
+    category and a rule means the category. "rule:name" or "category:name" picks one. Unknown
+    ids are an error that lists them all. A composite rule goes off with any member that is
+    switched off, since it cannot run without it."""
     categories = {c.get("id") for c in merged["categories"].values()}
-    unknown = sorted({i["id"] for i in items} - categories - set(merged["rules"]))
+    named = [(_split_prefix(i["id"]), i) for i in items]
+    unknown = sorted({
+        i["id"] for (kind, name), i in named
+        if not (kind != "rule" and name in categories
+                or kind != "category" and name in merged["rules"])
+    })  # fmt: skip
 
     if unknown:
         raise ConfigError(f"unknown rule or category ids: {', '.join(unknown)}")
 
     out = []
 
-    for item in items:
-        if item["id"] not in categories:
-            out.append(item)
+    for (kind, name), item in named:
+        is_category = name in categories if kind is None else kind == "category"
+
+        if not is_category:
+            out.append({**item, "id": name})
 
             continue
 
         out.extend({**item, "id": rid} for rid, rule in merged["rules"].items()
-                   if _category_id(rule.get("category"), merged) == item["id"])  # fmt: skip
+                   if _category_id(rule.get("category"), merged) == name)  # fmt: skip
 
     disables = [i for i in out if not i["enabled"]]
     enables = [i for i in out if i["enabled"]]

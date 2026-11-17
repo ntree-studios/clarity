@@ -207,7 +207,7 @@ def test_topics_command_reports_lines_and_json(tmp_path):
                         "finance=mortgage loan interest payment bank"])  # fmt: skip
 
     assert code == 0
-    assert "digression" in out and "drift" in out and "lines 19-25" in out
+    assert "digression" in out and "drift" in out and "lines 17-23" in out
     assert "finance" in out
 
     code, out, _ = run(["topics", str(path), "--format", "json"])
@@ -294,3 +294,16 @@ def test_focus_flags_reach_check_and_topics(tmp_path):
     assert [(f["section"], f["field"]) for f in gaps] == [("1", "title")]
     _, out, _ = run(["check", "-", "--tree", "--format", "json"], stdin=sections)
     assert "focus-gap-section" not in out
+
+
+def test_a_section_tree_reports_field_relative_lines_with_the_section_path():
+    structure = from_tree(PLANTED_TREE)
+    r = topics.run(PLANTED, structure=structure).report
+    first = r["chunks"][0]
+    rendered_line = PLANTED[: first["start"]].count("\n") + 1
+
+    assert rendered_line > 1  # the title and a blank line come first in the rendered text
+    assert first["field"] == "text" and first["line"] == 1
+    assert first["section"] == structure.parts[0].path
+    assert r["segments"][0]["line"] == 1 and r["segments"][0]["field"] == "text"
+    assert r["sections"][0]["field"] == "title" and r["sections"][0]["line"] == 1

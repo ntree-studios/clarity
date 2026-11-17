@@ -236,3 +236,12 @@ def test_sentence_rules_skip_a_title_checked_alone(title):
     assert {"long-sentence", "fragment-triad", "comma-splice"} <= text_only
     assert not [f for f in found if f["rule"] in text_only]
     assert all(f["field"] == "title" for f in found)
+
+
+def test_a_title_with_a_colon_is_one_sentence_for_sentence_rules():
+    title = "Regional Freight Services: Annual Plan"
+    result = analyze({"title": title}, config=load_config(None))
+    ratio = [f for f in result["findings"] if f["rule"] == "function-word-ratio"]
+
+    assert result["sentences"] == 1
+    assert all(f["span"]["text"] == title for f in ratio)
