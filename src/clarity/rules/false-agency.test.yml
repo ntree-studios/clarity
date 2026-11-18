@@ -81,10 +81,17 @@ should_not_fire:
   - "The crane does the heavy lifting on site."
   - "He does a lot of the work himself."
   - "Load-Bearing Walls"
+  - "She earned the right to vote in 1920."
+  - "He earned a salary of forty thousand."
 should_fire:
   - "This is the load-bearing assumption in the plan."
   - "This sentence does the heavy lifting."
   - "Every paragraph has to earn its place."
+  - "Earn trust with every release."
+  - "Each layer must earn trust before it ships."
+  - "Ship one pilot, then earn the right to scale."
+  - {document: {title: "Pilot one branch. Then earn the right to grow."}}
+  - "The first phase earned the right to grow."
 ---
 rule: abstract-physical-verb-catalogued
 should_not_fire:
@@ -97,6 +104,12 @@ should_not_fire:
   - "The plane landed at noon."
   - "The config lives in the home folder."
   - "She carries the weight of the box."
+  - "Water flows downhill."
+  - "Data flows from the sensor to the queue."
+  - "Traffic flows through the north gate."
+  - "Blood flows to the brain."
+  - "The river rises in the hills, and from there it flows north."
+  - "Heat flows from the warmer body to the cooler one."
 should_fire:
   - "The new process turns every complaint into a ticket."
   - "The redesign opens new revenue for the store."
@@ -106,6 +119,10 @@ should_fire:
   - "The joke lands hardest in the second act."
   - "The risk lives in the gap between teams."
   - "The argument carries weight."
+  - "Momentum flows outward."
+  - "Insight flows from every layer."
+  - "Accountability flows to every team."
+  - "Trust flows downstream."
 ---
 rule: abstract-physical-verb-observed
 should_not_fire:

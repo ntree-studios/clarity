@@ -137,6 +137,12 @@ def test_snapshot_diff_flags_an_unexplained_change_as_a_regression(proj):
     assert code == 1 and "[unexplained]" in out
 
 
+def test_explain_reports_the_closest_pattern_of_a_rule_with_several():
+    code, out, _ = run(["explain", "trailing-negation", "The cat sat on the mat."])
+
+    assert code == 0 and "NO MATCH" in out
+
+
 def test_explain_shows_where_a_pattern_breaks_and_where_it_matches():
     _, hit, _ = run(["explain", "framing-noun-phrase", "The honest framing is simple."])
     _, miss, _ = run(["explain", "framing-noun-phrase", "An honest day's work."])

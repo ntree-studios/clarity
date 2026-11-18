@@ -20,6 +20,7 @@ from clarity.config import Rule
 from clarity.matchers import phrase
 from clarity.matchers.common import CharSpan, dedupe, sentences, token_span
 from clarity.metrics import Analysis, scalar
+from clarity.nlp import concreteness_of
 from clarity.overlap import content_lemmas, overlap, paragraph_idf
 from clarity.punct_model import score as punct_score
 from clarity.punct_model import to_universal
@@ -135,6 +136,330 @@ def consecutive_fragments(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
     flush()
 
     return spans
+
+
+DENIAL_WORDS = {"not", "n't", "n’t", "never"}
+NOT_EQUAL = {"≠", "!=", "=/="}
+
+
+def _abstract(tokens: list[Token], limit: float) -> bool:
+    """At least one noun has a concreteness rating below limit."""
+    scores = [concreteness_of(t) for t in tokens]
+
+    return any(s is not None and s < limit for s in scores)
+
+
+def _noun(tok: Token) -> bool:
+    """A common noun, or a sentence-initial one the tagger took for a name ("Data is not ...")."""
+    first = tok.is_sent_start is True and tok.ent_type_ == ""
+
+    return tok.pos_ == "NOUN" or (tok.pos_ == "PROPN" and first)
+
+
+def _noun_complement(tok: Token) -> bool:
+    """A noun after the copula, including one tagged as an adjective that WordNet knows only as a
+    noun ("Speed is not thoroughness")."""
+    if tok.pos_ in {"NOUN", "PROPN"}:
+        return True
+
+    word = tok.lower_
+
+    noun_only = bool(wn.synsets(word, pos=wn.NOUN)) and not wn.synsets(word, pos=wn.ADJ)
+
+    return tok.pos_ == "ADJ" and noun_only
+
+
+def _plain(tok: Token) -> bool:
+    """A noun phrase with at most one modifier besides its determiner, and nothing after it."""
+    mods = [c for c in tok.children if c.dep_ in {"amod", "compound", "nmod", "nummod", "poss"}]
+    tail = [c for c in tok.children if c.dep_ in {"prep", "relcl", "acl", "appos"}]
+
+    return len(mods) <= 1 and not tail
+
+
+def _children_in(head: Token, span: Span) -> list[Token]:
+    """A head's children inside the span: a clause cut at a semicolon keeps only its own words."""
+    return [c for c in head.children if span.start <= c.i < span.end]
+
+
+def _copula_denial(sent: Span, limit: float) -> bool:
+    """'Speed is not quality': a noun subject, a negated copula and a plain noun complement."""
+    root = sent.root
+    kids = _children_in(root, sent)
+
+    if root.lemma_ != "be" or not any(c.lower_ in DENIAL_WORDS for c in kids):
+        return False
+
+    subj = [c for c in kids if c.dep_ in {"nsubj", "nsubjpass"}]
+    comp = [c for c in kids if c.dep_ in {"attr", "acomp"} and _noun_complement(c)]
+    other = [c for c in kids if c.dep_ in {"prep", "advcl", "ccomp", "conj", "xcomp"}]
+
+    if len(subj) != 1 or len(comp) != 1 or other:
+        return False
+
+    s, c = subj[0], comp[0]
+
+    return _noun(s) and _plain(s) and _plain(c) and _abstract([s, c], limit)
+
+
+PREPOSITIONS = {"to", "for", "of", "in", "on", "at", "by", "with", "from", "into", "over", "under"}
+
+
+def _bare_tail(root: Token, sent: Span) -> list[Token]:
+    """The words after the verb when they are a bare noun phrase ("a right"). The parser often
+    misreads a short field with no period, so this reads the words, not the arcs."""
+    tail = [t for t in sent if t.i > root.i and not t.is_punct and not t.is_space]
+    plain = 0 < len(tail) <= 3 and all(t.is_alpha and t.lower_ not in PREPOSITIONS for t in tail)
+
+    return tail if plain else []
+
+
+def _verb_denial(sent: Span, limit: float) -> bool:
+    """'A login never grants access': a noun subject, 'never' and a bare noun object."""
+    root = sent.root
+    kids = _children_in(root, sent)
+    subj = [c for c in kids if c.dep_ == "nsubj" and _noun(c) and _plain(c)]
+    obj = [c for c in kids if c.dep_ == "dobj" and c.pos_ == "NOUN" and _plain(c)]
+    obj = obj or _bare_tail(root, sent)[-1:]
+    never = any(c.lower_ == "never" for c in kids)
+    other = [c for c in kids if c.dep_ in {"advcl", "ccomp", "conj", "xcomp"}]
+
+    return (root.pos_ == "VERB" and never and len(subj) == 1 and len(obj) == 1 and not other
+            and _abstract([subj[0], obj[0]], limit))  # fmt: skip
+
+
+def _not_equal_denial(sent: Span) -> bool:
+    """'Shipped ≠ adopted': words on both sides of a not-equal sign, and no numbers."""
+    signs = [t.i for t in sent if t.text in NOT_EQUAL]
+
+    if len(signs) != 1:
+        return False
+
+    left = [t for t in sent if t.i < signs[0] and not t.is_punct]
+    right = [t for t in sent if t.i > signs[0] and not t.is_punct]
+    words = left + right
+
+    return (bool(left) and bool(right) and all(t.is_alpha and len(t) > 1 for t in words)
+            and len(words) <= 8)  # fmt: skip
+
+
+def _semicolon_parts(sent: Span) -> list[Span]:
+    """The sentence, or its clauses when semicolons join them ("Check the totals; a row count is
+    not a reconciliation.")."""
+    cuts = [t.i for t in sent if t.text == ";"]
+
+    if not cuts:
+        return [sent]
+
+    bounds = [sent.start, *[c + 1 for c in cuts], sent.end]
+    doc = sent.doc
+
+    return [doc[a:b] for a, b in zip(bounds, bounds[1:], strict=False) if b > a]
+
+
+@register
+def bare_denial(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
+    """A short sentence that only denies: 'Speed is not quality', 'Shipped ≠ adopted' and
+    'A login never grants access'. Each noun has at most one modifier and one must be fairly
+    abstract, so 'The file is not a valid JSON document' is left alone."""
+    max_words = int(rule.params.get("max_words", 10))
+    limit = float(rule.params.get("concreteness_max", 4.2))
+    spans: list[CharSpan] = []
+
+    for sent in sentences(doc):
+        for part in _semicolon_parts(sent):
+            if _word_count(part) > max_words:
+                continue
+
+            if _copula_denial(part, limit) or _verb_denial(part, limit) or _not_equal_denial(part):
+                spans.append((part.start_char, part.end_char))
+
+    return spans
+
+
+SEQUENCE_WORDS = {
+    "first", "second", "third", "last", "next", "later", "again", "always", "never", "now",
+}  # fmt: skip
+
+
+def _bare_short(sent: Span, max_words: int) -> bool:
+    """A short capitalized statement with no comma, article, pronoun, number or name: "Teams
+    change", "Ship small"."""
+    words = [t for t in sent if not t.is_punct and not t.is_space]
+    people = {"PERSON", "NORP", "GPE", "LOC", "FAC"}
+    named = [t for t in words if t.pos_ == "PROPN" and (t.ent_type_ in people
+             or (t.text[:1].isupper() and t.i != sent.start))]  # fmt: skip
+    statement = sent[-1].text not in {"?", "!"}
+    # "Write first. Advance the cursor second.": an ordering word at the end allows an article.
+    ordered = words[-1].lower_ in SEQUENCE_WORDS if words else False
+    banned = [t for t in words if (t.pos_ == "DET" and not ordered) or t.pos_ in {"PRON", "NUM"}
+              or t.text[:1].isdigit()]  # fmt: skip
+
+    capital = sent.text[:1].isupper()
+    comma = any(t.text == "," for t in sent)
+
+    plain = capital and statement and not comma and not named and not banned
+
+    return 2 <= len(words) <= max_words and plain
+
+
+def _has_verb(sent: Span) -> bool:
+    """A verb by tag, or a word WordNet knows as a verb: the tagger reads "Ship small" and "Docs
+    lag" as noun phrases."""
+    tagged = any(t.pos_ in {"VERB", "AUX"} or t.tag_.startswith("VB") for t in sent)
+
+    return tagged or any(t.is_alpha and wn.synsets(t.lower_, pos=wn.VERB) for t in sent)
+
+
+def _punctuated_sentences(doc: Doc) -> list[Span]:
+    """Sentences cut only after terminal punctuation or a line break. The parser sometimes splits
+    "Staff rotate." into "Staff" and "rotate.", so a piece with no closing mark joins the next."""
+    out: list[Span] = []
+
+    for sent in sentences(doc):
+        prev = out[-1] if out else None
+        words = [t for t in prev if not t.is_space] if prev is not None else []
+        open_ = bool(words) and words[-1].text not in {".", "!", "?", ";", ":"}
+        gap = doc.text[words[-1].idx + len(words[-1]):sent.start_char] if words else "\n"
+
+        if prev is not None and open_ and "\n" not in gap:
+            out[-1] = doc[prev.start:sent.end]
+        else:
+            out.append(sent)
+
+    return out
+
+
+@register
+def slogan_sentence_run(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
+    """Two or more short bare sentences in a row, at least one with a verb: "Teams change.
+    Contracts stay." or "Ship small. Measure often. Scale on proof." A field or paragraph break
+    ends a run. Runs with no verb at all are fragment-triad's."""
+    max_words = int(rule.params.get("max_words", 5))
+    min_run = int(rule.params.get("min_run", 2))
+    spans: list[CharSpan] = []
+    run_: list[Span] = []
+
+    def flush() -> None:
+        if len(run_) >= min_run and any(_has_verb(x) for x in run_):
+            spans.append((run_[0].start_char, run_[-1].end_char))
+
+        run_.clear()
+
+    for sent in _punctuated_sentences(doc):
+        if run_ and "\n" in doc.text[run_[-1].end_char:sent.start_char]:
+            flush()
+
+        if _bare_short(sent, max_words):
+            run_.append(sent)
+        else:
+            flush()
+
+    flush()
+
+    return spans
+
+
+@register
+def slogan_imperative(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
+    """A short imperative headed by a slogan verb whose objects are abstract: "Turn insight into
+    impact", "Build trust through transparency". A physical noun ("Connect the printer") or a name
+    clears it."""
+    verbs = set(rule.params.get("verbs", []))
+    max_words = int(rule.params.get("max_words", 7))
+    mean_max = float(rule.params.get("concreteness_mean_max", 3.6))
+    spans: list[CharSpan] = []
+
+    for sent in sentences(doc):
+        words = [t for t in sent if not t.is_punct and not t.is_space]
+
+        if not words or len(words) > max_words or words[0].lower_ not in verbs:
+            continue
+
+        rest = words[1:]
+
+        if any(t.pos_ in {"PROPN", "NUM"} or t.like_num for t in rest):
+            continue
+
+        rated = (concreteness_of(t) for t in rest if t.pos_ == "NOUN")
+        scores = [c for c in rated if c is not None]
+        wh = len(rest) > 0 and rest[0].lower_ in {"what", "where", "how"}
+
+        if not scores and not wh:
+            continue
+
+        if scores and statistics.mean(scores) >= mean_max:
+            continue
+
+        spans.append((sent.start_char, sent.end_char))
+
+    return spans
+
+
+TITLE_BREAK = re.compile(r"(?<=[.;!?])\s+|\s*[\u2014\u2013]\s*")
+TITLE_DENIAL = re.compile(
+    r"\b(?:is|are|was|were)\s+not\b|\b(?:isn't|aren't|isn\u2019t|aren\u2019t)\b|\u2260|\bnever\b",
+    re.IGNORECASE,
+)
+
+
+def _title_shape(title: str, first: Token | None) -> str | None:
+    """The stock template a title follows: two-part ("Two regions. One ledger."), denial
+    ("Speed is not quality.") or command ("Earn trust with every release."), else None."""
+    text = title.strip()
+    parts = [p for p in TITLE_BREAK.split(text.rstrip(".!;")) if p.strip()]
+
+    if len(parts) >= 2 and all(len(p.split()) <= 6 for p in parts):
+        return "two-part"
+
+    if len(text.split()) <= 10 and TITLE_DENIAL.search(text):
+        return "denial"
+
+    if first is not None and text.endswith("."):
+        word = first.lower_
+        verb_only = bool(wn.synsets(word, pos=wn.VERB)) and not wn.synsets(word, pos=wn.NOUN)
+
+        if first.tag_ == "VB" or verb_only:
+            return "command"
+
+    return None
+
+
+@register
+def repeated_title_shape(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
+    """One finding when most titles in the document follow stock templates. Reads every titled
+    section, so it needs a document tree with min_titles or more titles."""
+    if ctx.analysis is None or ctx.analysis.structure is None:
+        return []
+
+    min_titles = int(rule.params.get("min_titles", 4))
+    min_share = float(rule.params.get("min_share", 0.6))
+    heads = [b for p in ctx.analysis.structure.parts for b in p.blocks if b.field == "title"]
+
+    if len(heads) < min_titles:
+        return []
+
+    shapes: dict[str, list[tuple[int, int]]] = {}
+
+    for b in heads:
+        span = doc.char_span(b.start, b.end, alignment_mode="expand")
+        first_token = span[0] if span is not None and len(span) else None
+        shape = _title_shape(doc.text[b.start:b.end], first_token)
+
+        if shape:
+            shapes.setdefault(shape, []).append((b.start, b.end))
+
+    found = sum(len(v) for v in shapes.values())
+
+    if found / len(heads) < min_share:
+        return []
+
+    first = min(s for v in shapes.values() for s in v)
+    ranked = sorted(shapes.items(), key=lambda kv: -len(kv[1]))
+    counts = ", ".join(f"{len(v)} {k}" for k, v in ranked)
+    _detail(ctx, rule, first, f"{found} of {len(heads)} titles follow a template ({counts}).")
+
+    return [first]
 
 
 @register

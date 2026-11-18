@@ -7,6 +7,13 @@ version: 1
 # cap is the most a category can subtract from the 100-point score.
 severity_weights: {info: 0.5, warning: 1.0, error: 1.5}
 
+# A section shorter than min_section_words has its penalties raised by min_section_words / words,
+# up to max_section_factor, so findings on a 40-word slide cost what the same density costs at
+# full length. min_section_words: 0 turns it off.
+scoring:
+  min_section_words: 150
+  max_section_factor: 4
+
 # Reported separately from the style score. Never averaged into it.
 # target_grade is a band. fail_outside_band makes --fail-under also fail on the band.
 readability:
@@ -99,7 +106,7 @@ categories:
   - {n: 4, id: intensifiers, name: Intensifiers, weight: 1.2, cap: 12}
   - {n: 5, id: filler-transitions, name: Filler transitions, weight: 1.0, cap: 10}
   - {n: 6, id: corporate-vocabulary, name: Corporate vocabulary, weight: 1.6, cap: 18}
-  - {n: 7, id: structural-tics, name: Structural tics, weight: 1.5, cap: 16}
+  - {n: 7, id: structural-tics, name: Structural tics, weight: 1.5, cap: 24}
   - {n: 8, id: hedges, name: Hedges, weight: 1.2, cap: 12}
   - {n: 9, id: false-balance, name: False balance, weight: 1.4, cap: 12}
   - {n: 10, id: false-agency, name: False agency, weight: 1.4, cap: 14}
@@ -116,7 +123,7 @@ categories:
 
 rules:
   - id: sig-noun-phrase
-    description: "A noun phrase that rates the next point before giving it, such as \"the key thing is\" or \"the interesting part is\". The reader waits through a label and still has to judge the point."
+    description: "A noun phrase that rates the next point before giving it, such as \"the key thing is\", \"the interesting part is\" or \"the hard part is\". The reader waits through a label and still has to judge the point."
     remediation: "Delete the label and start with the point. \"The key thing is the backup runs at night\" becomes \"The backup runs at night.\""
     applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: significance-asserting
@@ -126,8 +133,9 @@ rules:
     message: Significance-asserting noun phrase. State the point directly.
     pattern:
       - {POS: DET}
-      - {LEMMA: {IN: [useful, interesting, important, key, crucial, clever]}}
-      - {LEMMA: {IN: [part, thing, point, bit, piece, question, answer]}}
+      - {LEMMA: {IN: [useful, interesting, important, key, crucial, clever, hard, tricky, difficult, real,
+          main, big]}}
+      - {LEMMA: {IN: [part, thing, point, bit, piece, question, answer, problem, challenge]}}
       - {LEMMA: be}
   - id: sig-frame
     description: "A stock opener that announces an answer, such as \"the short answer is\" or \"the real question is\". It adds a clause and tells the reader to pay attention without giving a reason."
@@ -331,7 +339,7 @@ rules:
     category: structural-tics
     applies_to: [title, subtitle]
     max_per_1k: 0
-    severity: warning
+    severity: error
     confidence: exact
     message: Stock title shape. A title should state the point of its section in plain words.
     pattern:
@@ -357,6 +365,19 @@ rules:
       # "How this works." / "What we found." (a teaser question written as a statement)
       - [{IS_SENT_START: true, LOWER: {IN: [what, how, why, where, who]}}, {IS_PUNCT: false, OP: "{1,6}"},
          {ORTH: "."}]
+  - id: repeated-title-shape
+    description: "Most section titles in a document follow one or two stock templates: two clipped sentences (\"Two regions. One ledger.\"), a bare denial (\"Speed is not quality.\") or a slogan command (\"Earn trust with every release.\"). One such title can be a choice. When most titles share the template, the document reads as generated, and the titles stop telling sections apart."
+    remediation: "Rewrite each title to state what its section finds or decides, in plain words. \"Two regions. One ledger.\" becomes \"Both regions now post to the same ledger.\""
+    category: structural-tics
+    backend: structural
+    function: repeated_title_shape
+    applies_to: [title]
+    count_scope: document
+    max_per_1k: 0
+    severity: error
+    confidence: inferred
+    message: Most section titles share one stock template. Write each title as the point of its section.
+    params: {min_titles: 4, min_share: 0.6}
   - id: count-noun-title
     description: "A title made only of a count and a noun, such as \"Ten topics\" or \"Three key risks\". It tells the reader how many things follow and nothing about them."
     remediation: "Name the subject or the point. \"Ten topics\" becomes \"What the session covers\" or \"Data quality, matching and access\"."
@@ -410,6 +431,36 @@ rules:
     confidence: exact
     message: Consecutive sentence fragments.
     params: {min_run: 2, boost_on_shared_opener: true}
+  - id: slogan-sentence-run
+    description: "Two or more very short sentences in a row with no article, pronoun or number, such as \"Teams change. Contracts stay.\" or \"Ship small. Measure often. Scale on proof.\" Fragment-triad does not catch the run because each sentence has a verb. The reader still cannot tell who does what or when."
+    remediation: "Join them into one sentence that names who acts and in which case. \"Teams change. Contracts stay.\" becomes \"When we reorganize a team, its supplier contracts stay with the company.\""
+    applies_to: [text, items]  # titles have stock-title-shape for the same beat
+    category: structural-tics
+    backend: structural
+    function: slogan_sentence_run
+    max_per_1k: 0
+    severity: error
+    confidence: inferred
+    message: Run of short slogan sentences. Join them and say who does what.
+    params: {max_words: 5, min_run: 2}
+  - id: slogan-imperative-title
+    description: "A short command in a title, kicker or item, built on a slogan verb and abstract nouns, such as \"Turn insight into impact\" or \"Build trust through transparency\". It sounds like a call to action, but it does not name a task anyone could do."
+    remediation: "Name the task, the owner or the result. \"Connect data to decisions\" becomes \"Show each region's weekly churn on the sales dashboard.\""
+    applies_to: [title, subtitle, items]  # slide kickers and taglines; body text has its own rules
+    category: structural-tics
+    backend: structural
+    function: slogan_imperative
+    max_per_1k: 0
+    severity: error
+    confidence: inferred
+    message: Slogan command with abstract objects. Name the task, owner or result.
+    params:
+      max_words: 7
+      concreteness_mean_max: 3.6  # mean concreteness of the nouns; "printer" or "file handle" clears it
+      verbs: [connect, turn, close, unlock, build, drive, capture, make, protect, accelerate, bridge, earn,
+        empower, transform, deliver, align, scale, elevate, harness, fuel, unleash, sequence, prove, expand,
+        own, embrace, reimagine, maximize, streamline, foster, cultivate, amplify, simplify, champion,
+        operationalize, democratize, turbocharge, supercharge]
   - id: question-then-answer
     description: "A rhetorical question followed at once by an answer that repeats its words, as in \"Why does the cache fail? The cache fails because...\". The question adds a sentence and no information."
     remediation: "Drop the question and keep the answer. \"Why does it fail? It fails because keys go stale\" becomes \"The cache fails because keys go stale.\""
@@ -447,7 +498,7 @@ rules:
     message: '"X rather than Y" construction.'
     phrases: [rather than]
   - id: trailing-negation
-    description: "Defines a thing by denying something nobody claimed: \"X, not Y\", \"isn't X, it's Y\", \"not X but Y\", \"explains, never decides\" and \"reviews instead of rewriting\". AI-written text uses it several times more often than people do."
+    description: "Defines a thing by denying something nobody claimed: \"X, not Y\", \"isn't X, it's Y\", \"not X but Y\", \"explains, never decides\" and \"reviews instead of rewriting\". AI-written text uses it several times more often than people do. It also fires after a dash and at the end of a field with no period."
     remediation: "Say what the thing is and cut the denial. Keep a \"not\" only when a reader would otherwise believe the denied claim. \"It's a guide, not a rulebook\" becomes \"It's a guide.\""
     applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: structural-tics
@@ -456,10 +507,26 @@ rules:
     confidence: exact
     message: 'Reframe by negation ("X, not Y", "isn''t X, it''s Y", "not X but Y"). Say what it is and drop the denial.'
     pattern:
-      # "..., not Y." at the end of a sentence
-      - [{ORTH: ","}, {LOWER: not}, {IS_PUNCT: false, LOWER: {NOT_IN: [least, only, to, that, because, necessarily, yet,
-          always, all, every, once, even, quite, unlike, surprisingly]}}, {IS_PUNCT: false, OP: "{0,4}"},
-         {ORTH: {IN: [".", "!", ";"]}}]
+      # "..., not Y." at the end of a sentence, after a comma or a dash
+      - [{ORTH: {IN: [",", "\u2014", "\u2013"]}}, {LOWER: not}, {IS_PUNCT: false, LOWER: {NOT_IN: [least, only, to,
+          that, because, necessarily, yet, always, all, every, once, even, quite, unlike, surprisingly, including]}},
+         {IS_PUNCT: false, OP: "{0,4}"}, {ORTH: {IN: [".", "!", ";"]}}]
+      # "Quality first, not speed" / "teams—not projects" ending a title, kicker, item or footer with no
+      # period. sent_end marks the last token of a sentence, and every field starts a new sentence.
+      - [{ORTH: {IN: [",", "\u2014", "\u2013"]}}, {LOWER: not}, {IS_PUNCT: false, LOWER: {NOT_IN: [least,
+          to, that, because, necessarily, yet, always, all, every, once, even, quite, unlike, surprisingly,
+          including]}, _: {sent_end: true}}]
+      - [{ORTH: {IN: [",", "\u2014", "\u2013"]}}, {LOWER: not}, {IS_PUNCT: false, LOWER: {NOT_IN: [least,
+          to, that, because, necessarily, yet, always, all, every, once, even, quite, unlike, surprisingly,
+          including]}}, {ORTH: {NOT_IN: [",", ";", ":", ".", "!", "?", "(", ")", "\u2014", "\u2013"]},
+          LOWER: {NOT_IN: [but, also]}, OP: "{0,6}"},
+         {_: {sent_end: true}}]
+      # ... ending in a quoted phrase: 'one flag per reader—not one global "allowed = yes."'
+      - [{ORTH: {IN: [",", "\u2014", "\u2013"]}}, {LOWER: not}, {IS_PUNCT: false, LOWER: {NOT_IN: [least,
+          to, that, because, necessarily, yet, always, all, every, once, even, quite, unlike, surprisingly,
+          including]}}, {ORTH: {NOT_IN: [",", ";", ":", ".", "!", "?", "(", ")", "\u2014", "\u2013"]},
+          LOWER: {NOT_IN: [but, also]}, OP: "{0,6}"},
+         {ORTH: {IN: [".", "!"]}}, {ORTH: {IN: ["\"", "\u201d", "'", "\u2019"]}, _: {sent_end: true}}]
       # "isn't X, it's Y"
       - [{LOWER: {IN: [is, was, are, were, "'s", "’s"]}}, {LOWER: {IN: [not, "n't", "n’t"]}}, {IS_PUNCT: false, OP: "{1,8}"},
          {ORTH: {IN: [",", ";"]}}, {LOWER: {IN: [it, they, this, that]}}, {LOWER: {IN: [is, "'s", "’s", are, "'re", "’re", was, were]}}]
@@ -482,6 +549,55 @@ rules:
       - [{POS: VERB}, {ORTH: ","}, {LOWER: never}, {POS: VERB}]
       # "the team reviews instead of rewriting" (a noun before "instead", as in "use X instead of Y", is advice)
       - [{POS: VERB}, {LOWER: instead}, {LOWER: of}, {TAG: VBG}]
+  - id: bare-denial
+    description: "A short sentence that only denies, such as \"Speed is not quality\", \"Shipped \u2260 adopted\" or \"A login never grants access\". It reads like a slogan, and it tells the reader what something is not without saying what it is. Both nouns are usually abstract, and nothing follows the denial."
+    remediation: "State the fact behind the denial. \"A demo is not a product\" becomes \"The demo still lacks billing, login and error handling.\""
+    applies_to: [title, subtitle, text, items]  # slide titles and kickers are where it shows most
+    category: structural-tics
+    backend: structural
+    function: bare_denial
+    max_per_1k: 0
+    severity: error
+    confidence: inferred
+    message: 'Bare denial ("X is not Y", "X \u2260 Y"). Say what X is, or give the fact behind the denial.'
+    params: {max_words: 10, concreteness_max: 4.2}  # one noun must rate below this
+  - id: comparative-maxim
+    description: "A rule of thumb shaped like \"A X is worse than a Y\" or \"Done is better than perfect\". It sounds wise, but it does not give a case, a number or a cost."
+    remediation: "Give the case and the cost. \"A late shipment is worse than a partial one\" becomes \"A late shipment misses the customer's launch date. A partial one delays two accessories.\""
+    applies_to: [title, subtitle, text, items]  # slide kickers carry it most
+    category: structural-tics
+    max_per_1k: 0
+    severity: error
+    confidence: exact
+    message: Comparative maxim ("A X is worse than a Y"). Give the case and the cost instead.
+    # A word slot: anything but a preposition, finite verb, pronoun or number, so "a Ford for long trips"
+    # and "than me at chess" stay clean. Every shape must end its sentence (sent_end).
+    pattern:
+      # "A wrong label is worse than a missing label" / "A slow launch beats a broken launch"
+      - [{IS_SENT_START: true, LOWER: {IN: [a, an]}},
+         {IS_PUNCT: false, POS: {NOT_IN: [ADP, AUX, SCONJ, NUM, DET, PROPN]}, OP: "{1,3}"},
+         {LEMMA: be, OP: "?"}, {LOWER: {IN: [worse, better, cheaper, safer, riskier, costlier, beats, trumps]}},
+         {LOWER: than, OP: "?"}, {LOWER: {IN: [a, an, "no"]}},
+         {IS_PUNCT: false, POS: {NOT_IN: [ADP, AUX, SCONJ, PRON, NUM, PROPN]}, TAG: {NOT_IN: [VBZ, VBP, VBD, VB]},
+          OP: "{0,2}"},
+         {IS_PUNCT: false, POS: {NOT_IN: [ADP, AUX, SCONJ, PRON, NUM, PROPN]}, _: {sent_end: true}}]
+      - [{IS_SENT_START: true, LOWER: {IN: [a, an]}},
+         {IS_PUNCT: false, POS: {NOT_IN: [ADP, AUX, SCONJ, NUM, DET, PROPN]}, OP: "{1,3}"},
+         {LEMMA: be, OP: "?"}, {LOWER: {IN: [worse, better, cheaper, safer, riskier, costlier, beats, trumps]}},
+         {LOWER: than, OP: "?"}, {LOWER: {IN: [a, an, "no"]}},
+         {IS_PUNCT: false, POS: {NOT_IN: [ADP, AUX, SCONJ, PRON, NUM, PROPN]}, TAG: {NOT_IN: [VBZ, VBP, VBD, VB]},
+          OP: "{1,3}"},
+         {ORTH: {IN: [".", "!"]}, _: {sent_end: true}}]
+      # "An honest estimate is worth more than an optimistic plan"
+      - [{IS_SENT_START: true, LOWER: {IN: [a, an]}}, {IS_PUNCT: false, POS: {IN: [ADJ, NOUN, VERB]}, OP: "{1,3}"},
+         {LEMMA: be}, {LOWER: worth}, {LOWER: {IN: [more, less]}}, {LOWER: than}, {LOWER: {IN: [a, an, "no"]}},
+         {IS_PUNCT: false, POS: {NOT_IN: [ADP, AUX, SCONJ, PRON, NUM, PROPN]}, OP: "{1,3}"},
+         {ORTH: {IN: [".", "!"]}, OP: "?", _: {sent_end: true}}]
+      # "Done is better than perfect" / "Boring is better than clever"
+      - [{IS_SENT_START: true, POS: {IN: [ADJ, VERB, NOUN, PROPN]}}, {LEMMA: be},
+         {LOWER: {IN: [better, worse]}}, {LOWER: than}, {POS: {IN: [ADJ, VERB]}, _: {sent_end: true}}]
+      - [{IS_SENT_START: true, POS: {IN: [ADJ, VERB, NOUN, PROPN]}}, {LEMMA: be},
+         {LOWER: {IN: [better, worse]}}, {LOWER: than}, {POS: {IN: [ADJ, VERB]}}, {ORTH: {IN: [".", "!"]}}]
   - id: which-is-exactly
     description: "An emphatic tag such as \"which is exactly what we need\" or \"which is the point\". It tells the reader to agree without showing why."
     remediation: "End the sentence at the fact, and give the reason in its own sentence if one is needed. \"The cache halves load, which is exactly the point\" becomes \"The cache halves load.\""
@@ -1368,10 +1484,10 @@ rules:
   # user-observed = info. The abs node is the argument whose Brysbaert concreteness must fall
   # below concreteness_max; a pattern without an abs node is a fixed shape and is not gated.
   - id: abstract-physical-verb
-    description: "Dead metaphors from the strong-evidence list, which describe an idea with words for physical labor. Examples are \"load-bearing\", \"does the heavy lifting\", \"does most of the work\" and \"earns its place\". The reader gets an image and no mechanism."
+    description: "Dead metaphors from the strong-evidence list, which describe an idea with words for physical labor. Examples are \"load-bearing\", \"does the heavy lifting\", \"does most of the work\", \"earns its place\", \"earn trust\" and \"earn the right to\". The reader gets an image and no mechanism."
     remediation: "Say what the thing does. \"This clause does the heavy lifting\" becomes \"This clause sets the price.\""
     experimental: true  # until calibrated on the corpora (task 7)
-    applies_to: [text, items]  # sentence style; titles and subtitles are labels
+    applies_to: [title, subtitle, text, items]  # slide titles carry "earn trust" as often as text does
     category: false-agency
     backend: dependency
     max_per_1k: 0
@@ -1386,7 +1502,10 @@ rules:
       exempt: [variable, field, key, value, column, row, buffer, register, pointer, array, map, object,
         function, config, configuration, file, table, list, dict, dictionary, string, parameter,
         flag, cache, queue, stack, heap, record, cell, slot, struct, class, method, module, package,
-        container, port, socket, setting, env, environment, directory, folder, path, repo, repository]
+        container, port, socket, setting, env, environment, directory, folder, path, repo, repository,
+        # ... and things that literally flow.
+        data, datum, traffic, request, packet, message, event, signal, stream, current, power, energy,
+        money, cash, fund, water, blood, air, fluid, heat, gas, liquid, river, stream]
     patterns:
       - - {RIGHT_ID: abs, RIGHT_ATTRS: {POS: NOUN}}
         - {LEFT_ID: abs, REL_OP: ">", RIGHT_ID: bear, RIGHT_ATTRS: {LOWER: bearing}}
@@ -1403,8 +1522,23 @@ rules:
       - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: earn}}
         - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: obj, RIGHT_ATTRS: {DEP: dobj, LEMMA: {IN: [keep, place, spot, seat]}}}
         - {LEFT_ID: obj, REL_OP: ">", RIGHT_ID: poss, RIGHT_ATTRS: {LOWER: its}}
+      # "The first phase earned the right to grow" (an abstract subject earning trust or a right)
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: earn}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: abs, RIGHT_ATTRS: {DEP: nsubj}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: obj, RIGHT_ATTRS: {DEP: dobj, LEMMA: {IN: [trust, right, confidence,
+            credibility]}}}
+      # "Earn trust with every release." / "then earn the right to scale" (an imperative slogan). The
+      # tagger often reads a sentence-initial "Earn" as a noun, so these match on word order.
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LOWER: earn, IS_SENT_START: true}}
+        - {LEFT_ID: verb, REL_OP: ".", RIGHT_ID: obj, RIGHT_ATTRS: {LEMMA: {IN: [trust, confidence, credibility]}}}
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LOWER: earn, IS_SENT_START: true}}
+        - {LEFT_ID: verb, REL_OP: ".", RIGHT_ID: det, RIGHT_ATTRS: {LOWER: the}}
+        - {LEFT_ID: det, REL_OP: ".", RIGHT_ID: obj, RIGHT_ATTRS: {LOWER: right}}
+      - - {RIGHT_ID: then, RIGHT_ATTRS: {LOWER: then}}
+        - {LEFT_ID: then, REL_OP: ".", RIGHT_ID: verb, RIGHT_ATTRS: {LOWER: earn}}
+        - {LEFT_ID: verb, REL_OP: ".*", RIGHT_ID: obj, RIGHT_ATTRS: {LEMMA: {IN: [trust, right, confidence, credibility]}}}
   - id: abstract-physical-verb-catalogued
-    description: "Physical verbs on abstract subjects, from a catalogue of known tics. Examples are \"the plan holds\", \"the joke lands\", \"the risk lives in\", \"turns every complaint into\" and \"a lot rides on\". AI opinion writing uses them several times as often as people do. Code nouns that literally hold values, such as \"variable\" and \"cache\", are skipped."
+    description: "Physical verbs on abstract subjects, from a catalogue of known tics. Examples are \"the plan holds\", \"the joke lands\", \"the risk lives in\", \"turns every complaint into\", \"momentum flows outward\" and \"a lot rides on\". AI opinion writing uses them several times as often as people do. Code nouns that literally hold values, such as \"variable\" and \"cache\", are skipped."
     remediation: "Say in literal terms what the thing does. \"The plan holds\" becomes \"The plan still meets the June date.\""
     applies_to: [text, items]  # sentence style; titles and subtitles are labels
     category: false-agency
@@ -1459,6 +1593,10 @@ rules:
       - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: earn, POS: VERB}}
         - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: abs, RIGHT_ATTRS: {DEP: nsubj}}
         - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: obj, RIGHT_ATTRS: {DEP: dobj, LEMMA: {IN: [next, place, keep, spot]}}}
+      # "Momentum flows outward" / "Insight flows to every team"
+      # (a noun subject only: "it flows" and "which flows" are usually a river)
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: flow, POS: VERB}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: abs, RIGHT_ATTRS: {DEP: nsubj, POS: {IN: [NOUN, PROPN]}}}
       # "A lot rides on this" ("turns on" is left out: "turned their backs on" matched)
       - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: ride, POS: VERB}}
         - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: abs, RIGHT_ATTRS: {DEP: nsubj}}

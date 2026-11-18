@@ -105,6 +105,7 @@ class Config:
     prose_metrics: dict[str, Any] = field(default_factory=dict)
     topics: dict[str, Any] = field(default_factory=dict)
     records: dict[str, Any] = field(default_factory=dict)
+    scoring: dict[str, Any] = field(default_factory=dict)
 
 
 def _read_default() -> dict[str, Any]:
@@ -261,7 +262,7 @@ class Layer:
 Provenance = dict[str, dict[str, list[tuple[str, str, str]]]]
 TOP_LEVEL = {
     "version", "severity_weights", "categories", "rules", "watchlist", "readability",
-    "prose_metrics", "profile", "topics", "records", "builtin",
+    "prose_metrics", "profile", "topics", "records", "builtin", "scoring",
 }  # fmt: skip
 
 
@@ -356,7 +357,7 @@ def merge_layers(layers: list[Layer]) -> tuple[dict[str, Any], Provenance]:
     merged: dict[str, Any] = {
         "severity_weights": {}, "categories": {}, "rules": {}, "readability": {},
         "prose_metrics": {}, "profile": None, "profile_source": None, "topics": {},
-        "records": {},
+        "records": {}, "scoring": {},
     }  # fmt: skip
     prov: Provenance = {}
 
@@ -367,7 +368,7 @@ def merge_layers(layers: list[Layer]) -> tuple[dict[str, Any], Provenance]:
         if unknown:
             raise ConfigError(f"{layer.source}: unknown top-level keys {sorted(unknown)}")
 
-        for block in ("severity_weights", "readability", "prose_metrics", "records"):
+        for block in ("severity_weights", "readability", "prose_metrics", "records", "scoring"):
             merge_fields(merged[block], data.get(block) or {}, layer.source, prov, block)
 
         _layer_categories(merged, layer, prov)
@@ -482,6 +483,7 @@ def build_config(merged: dict[str, Any], prov: Provenance) -> Config:
         merged["prose_metrics"],
         topic_settings,
         merged["records"],
+        merged["scoring"],
     )
 
 
