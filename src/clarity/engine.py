@@ -552,6 +552,20 @@ def _merge_categories(
     return out
 
 
+def short_section_factor(cfg: Config, words: int) -> float:
+    """How much a short section's penalties are raised: min_section_words / words, between 1 and
+    max_section_factor.
+
+    Penalties count findings, so four tics cost a 40-word slide what they cost a 1,000-word essay.
+    Scoring a short section as if its density held over min_section_words fixes that. The upper
+    bound keeps a one-line input from hitting every category cap on its first finding.
+    """
+    floor = float(cfg.scoring.get("min_section_words") or 0)
+    most = float(cfg.scoring.get("max_section_factor") or 1)
+
+    return min(most, max(1.0, floor / words)) if words and floor else 1.0
+
+
 def _categories(
     cfg: Config, per_rule: dict[str, dict[str, int]], words: int, effective: dict[str, Rule]
 ) -> list[dict[str, Any]]:
@@ -562,7 +576,7 @@ def _categories(
         rules = [effective.get(r.id, r) for r in cfg.rules if int(r.category) == n]
         found = sum(per_rule.get(r.id, {}).get("found", 0) for r in rules)
         over = sum(per_rule.get(r.id, {}).get("over", 0) for r in rules)
-        weighted = sum(
+        weighted = short_section_factor(cfg, words) * sum(
             per_rule.get(r.id, {}).get("over", 0) * cfg.severity_weights.get(r.severity, 1.0)
             for r in rules
         )

@@ -150,7 +150,10 @@ def explain(rule: Rule, text: str | dict[str, Any], resolved: Resolved) -> str:
     verdict = ""
 
     if rule.pattern:
-        start, steps = _best_attempt(doc, rule.pattern)
+        # A rule holds one token pattern or a list of them; explain the one that gets furthest.
+        several = rule.pattern if isinstance(rule.pattern[0], list) else [rule.pattern]
+        attempts = [(_best_attempt(doc, p), p) for p in several]
+        (start, steps), pattern = max(attempts, key=lambda a: sum(ok for ok, _ in a[0][1]))
 
         for offset, (ok, why) in enumerate(steps):
             marks[start + offset] = f"{TICK if ok else CROSS} {why}"
@@ -159,7 +162,7 @@ def explain(rule: Rule, text: str | dict[str, Any], resolved: Resolved) -> str:
 
         if failed is not None:
             verdict = f"NO MATCH · failed at token {failed + 1}"
-        elif len(steps) < len(rule.pattern):
+        elif len(steps) < len(pattern):
             verdict = "NO MATCH · the text ends before the pattern does"
 
     for tok in doc if rule.function != "query" else []:  # a query reads records, not tokens

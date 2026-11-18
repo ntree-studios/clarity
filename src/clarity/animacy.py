@@ -8,6 +8,8 @@ from typing import Any
 from nltk.corpus import wordnet as wn
 from spacy.tokens import Token
 
+from clarity.nlp import concreteness
+
 ANIMATE_ENTS = {"PERSON", "ORG", "NORP", "GPE"}
 ANIMATE_ROOTS = ("person.n.01", "animal.n.01", "social_group.n.01")
 ANIMATE_PRONOUNS = {
@@ -40,15 +42,42 @@ def _acronym(token: Token) -> bool:
     return len(token.text) > 1 and token.text.isupper()
 
 
+@lru_cache(maxsize=4096)
+def _used_as_common_noun(word: str) -> bool:
+    """WordNet knows the word as a noun and it is a common word: it has tagged-corpus uses
+    ("momentum") or a concreteness rating ("accountability"). A rare sense alone does not count, so
+    "Pia" (pia mater) is still a name."""
+    senses = wn.synsets(word, pos=wn.NOUN)
+
+    if not senses:
+        return False
+
+    lemmas = [lemma for s in senses for lemma in s.lemmas() if lemma.name().lower() == word]
+
+    if any(lemma.count() > 0 for lemma in lemmas):
+        return True
+
+    return word in concreteness()
+
+
+def _capitalized_common_noun(token: Token) -> bool:
+    """A sentence-initial word capitalized only by its position: "Trust flows downstream"."""
+    first = token.is_sent_start is True and token.ent_type_ == ""
+
+    return first and _used_as_common_noun(token.lower_)
+
+
 def _looks_like_a_name(token: Token) -> bool:
     """A capitalized singular noun with no determiner ('Pia had seen') is a name the tagger missed.
 
     Common singular nouns need a determiner, so this separates names from 'Architecture wants'
-    only when a determiner is present; a bare capitalized sentence-initial noun is read as a name.
+    only when a determiner is present. A bare capitalized sentence-initial noun is read as a name
+    unless WordNet has uses of it as a common noun, so "Momentum fades" stays abstract.
     """
     bare = not any(c.dep_ in {"det", "poss"} for c in token.children)
+    capitalized = token.tag_ == "NN" and token.text[:1].isupper() and not _acronym(token)
 
-    return token.tag_ == "NN" and token.text[:1].isupper() and bare and not _acronym(token)
+    return capitalized and bare and not _used_as_common_noun(token.lower_)
 
 
 # Company and agency acronyms that WordNet does not know and that do act as agents.
@@ -77,8 +106,11 @@ def is_animate(token: Token) -> bool:
     if token.ent_type_ in ANIMATE_ENTS:
         return True
 
-    if token.lower_ in ANIMATE_PRONOUNS or (token.pos_ == "PROPN" and not _acronym(token)):
-        return True  # names the NER missed ("Pia"), and "No one wants"
+    if token.lower_ in ANIMATE_PRONOUNS:
+        return True  # "No one wants"
+
+    if token.pos_ == "PROPN" and not _acronym(token) and not _capitalized_common_noun(token):
+        return True  # names the NER missed ("Pia")
 
     if token.pos_ == "PRON":
         return False

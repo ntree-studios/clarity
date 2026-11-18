@@ -6,11 +6,32 @@ from typing import Any
 
 from spacy.language import Language
 from spacy.matcher import Matcher
-from spacy.tokens import Doc
+from spacy.tokens import Doc, Token
 
 from clarity.config import Rule
 from clarity.matchers.common import CharSpan, dedupe, token_span
 from clarity.nlp import concreteness_of
+
+
+def _sent_end(token: Token) -> bool:
+    """The last word or mark of a sentence. Whitespace between fields stays in the sentence before
+    it, so a token followed only by whitespace up to the next sentence also ends its sentence."""
+    if token.is_space:
+        return False
+
+    doc = token.doc
+    i = token.i + 1
+
+    while i < len(doc) and doc[i].is_space and not doc[i].is_sent_start:
+        i += 1
+
+    return i >= len(doc) or bool(doc[i].is_sent_start)
+
+
+# Patterns write {"_": {"sent_end": true}} for the last token of a sentence. Every title, subtitle,
+# item and paragraph starts a sentence, so this also marks the end of a field with no period.
+if not Token.has_extension("sent_end"):
+    Token.set_extension("sent_end", getter=_sent_end)
 
 
 def compile_phrase(nlp: Language, phrase: str, mode: str) -> list[dict[str, Any]]:

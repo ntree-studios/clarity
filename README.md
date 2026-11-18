@@ -570,6 +570,7 @@ Structural. Write a Python function and register it in `src/clarity/matchers/str
 <!-- surface:functions -->
 - `adjective_density`: 
 - `adverb_propped_verb`: 
+- `bare_denial`: A short sentence that only denies: 'Speed is not quality', 'Shipped ≠ adopted' and
 - `clause_overload`: Finite clauses per sentence, from the shared clause utility, when commas are present.
 - `comma_splice`: 
 - `compound_chain`: Runs of noun modifiers: 'quality score threshold'.
@@ -596,10 +597,13 @@ Structural. Write a Python function and register it in `src/clarity/matchers/str
 - `rare_punctuation_context`: 
 - `redundant_closer`: A short last sentence that adds few content lemmas the paragraph has not already used.
 - `repeated_ngram`: A phrase the writer leans on: 3+ occurrences, spaced apart, with no proper nouns.
+- `repeated_title_shape`: One finding when most titles in the document follow stock templates. Reads every titled
 - `run_on_missing_comma`: 
 - `section_restatement`: 
 - `sentence_length_variance`: 
 - `sentence_restatement`: A sentence whose content lemmas mostly repeat one of the preceding sentences.
+- `slogan_imperative`: A short imperative headed by a slogan verb whose objects are abstract: "Turn insight into
+- `slogan_sentence_run`: Two or more short bare sentences in a row, at least one with a verb: "Teams change.
 - `stacked_adjectives`: Runs of adjectives (commas and conjunctions allowed between) before a noun.
 - `subj_verb_gap`: The reader holds the subject open while a long interruption passes.
 - `syllables_per_word`: 

@@ -8,10 +8,19 @@
 - "The crucial question is whether users care."
 - "A clever bit is that the cache warms itself."
 - "The useful answer is to measure first."
+- "The hard part is the migration."
+- "The difficult part is getting approval."
+- "The hardest part is getting buy-in."
+- "The tricky bit is the rollback."
+- "The real problem is ownership."
+- "The main thing is to start small."
 "should_not_fire":
 - "The key opened the door."
 - "The key to the cabinet is on the hook."
 - "A real number is any value on the line."
+- "The hard drive is full."
+- "The main door is locked."
+- "The real estate market is slow."
 ---
 "rule": "sig-frame"
 "should_fire":

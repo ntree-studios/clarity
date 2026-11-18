@@ -5,10 +5,12 @@ from pathlib import Path
 
 import pytest
 
+from clarity.animacy import is_animate
 from clarity.config import load_config
 from clarity.engine import analyze
 from clarity.fixtures import load_index
 from clarity.harness import run_fixtures
+from clarity.nlp import get_nlp
 from clarity.resolve import resolve
 
 PROFILES = ("technical", "business", "essay")
@@ -25,6 +27,15 @@ def rules_of(text, config=None):
 )  # fmt: skip
 def test_physical_verb_fires_only_on_the_abstract_subject(text, fires):
     assert ("abstract-physical-verb-catalogued" in rules_of(text)) is fires
+
+
+@pytest.mark.parametrize(
+    ("text", "animate"),
+    [("Momentum fades quickly.", False), ("Trust grows slowly.", False),
+     ("Value moves to the customer.", False), ("Pia had seen the report.", True)],
+)  # fmt: skip
+def test_a_bare_common_noun_starting_a_sentence_is_not_a_name(text, animate):
+    assert is_animate(get_nlp()(text)[0]) is animate
 
 
 def test_marker_rules_feed_composites_but_are_never_reported():

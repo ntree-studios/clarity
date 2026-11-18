@@ -74,6 +74,12 @@ should_not_fire:
   - "Not every test passed."
   - "The resolution of microtomography is not enough, but synchrotron tomography can image the pores."
   - "The mechanism is not completely understood, but is clearly important."
+  - "Ten dollars, not including shipping"
+  - "We met on Friday—not that it changed anything."
+  - "The launch slipped—not least because of the outage."
+  - "Is the build ready or not"
+  - "Ask first, not later than noon, and then submit."
+  - "It ships with docs, not only for admins but also for users"
 should_fire:
   - "The cache sits beside the database, not in its path, so reads stay fast."
   - "The model suggests, never decides the outcome."
@@ -83,6 +89,21 @@ should_fire:
   - "The problem is not technology in itself but the way it is used."
   - "They failed not because they lacked ability but because nobody trained them."
   - "Good onboarding is a process, not an event."
+  - "Clear contracts, not five dashboards"
+  - "A shared habit, not a quarterly audit"
+  - "Ship outcomes, not features"
+  - "A product decision, not a technical one"
+  - "Guardrails, not gates"
+  - "Ownership comes before tooling, not after it"
+  - "One ledger per customer—not one per region."
+  - "Fines, holds and renewals—not just barcode scans."
+  - "Measured adoption–not merely a launch email."
+  - "Decisions with owners — not decisions by committee"
+  - "We fund teams—not projects"
+  - "Fines and holds—not only barcode scans."
+  - "One flag per reader—not one global “allowed = yes.”"
+  - {document: {title: "Refunds", items: ["Closed within the week—not merely “ticket opened.”", "Next item"]}}
+  - {document: {title: "Kickers", subtitle: "Owners first, not tools", text: "The rest follows."}}
 ---
 rule: stock-title-shape
 should_fire:
@@ -124,3 +145,128 @@ should_not_fire:
 - "Two reasons explain the delay."
 - {document: {title: "Ten topics"}}
 - {document: {title: "Recipe", items: ["Two eggs.", "One cup of flour."]}}
+---
+rule: bare-denial
+should_not_fire:
+  - "The server is not running."
+  - "The API is not thread-safe."
+  - "She is not a doctor."
+  - "This is not a problem for small files."
+  - "The meeting is not on Friday."
+  - "The file is not a valid JSON document."
+  - "Paris is not the capital of Germany."
+  - "The patient is not a candidate for surgery."
+  - "He never answered the phone."
+  - "The alarm never triggered the sprinklers."
+  - "Check that x ≠ 0 before you divide."
+  - "Not every test is a unit test."
+  - "The ticket is not a duplicate, so keep it open and assign it to the payments team."
+should_fire:
+  - "Speed is not quality."
+  - "A demo is not a product."
+  - "Activity is not progress."
+  - "Visibility is not control."
+  - "A roadmap is not a strategy."
+  - "Adoption is not value."
+  - "Consent is not a checkbox."
+  - "Data is not insight."
+  - "A dashboard is not a decision."
+  - "Alignment is not agreement."
+  - "Coverage is not correctness."
+  - "The bottleneck is not the model."
+  - "The constraint is not the budget."
+  - "Logs are not evidence."
+  - "Tickets aren't outcomes."
+  - "Uptime isn't reliability."
+  - "A shared inbox is not a shared owner."
+  - "Proposals are not decisions."
+  - "Silent failure is not success."
+  - "Speed is not thoroughness."
+  - "Old tickets need a fresh look; a quick reply is not a resolution."
+  - {document: {title: "Access", subtitle: "A badge never grants entry", text: "One decision per door."}}
+  - "Shipped ≠ adopted."
+  - "Signed contract ≠ live customer."
+  - "Green tests ≠ working product"
+  - "Missing log line ≠ proven outage."
+  - "A login never grants access"
+  - "A match never proves identity"
+  - "Speed never replaces review"
+---
+rule: comparative-maxim
+should_not_fire:
+  - "A Honda is better than a Ford for long trips."
+  - "The new build is better than the old one by about 20 percent."
+  - "She is better than me at chess."
+  - "Version two was worse than version one because the cache was cold."
+  - "Is a lease better than a loan?"
+should_fire:
+  - "A wrong label is worse than a missing label."
+  - "A late answer is better than a wrong answer."
+  - "A small team is better than a big committee"
+  - "A slow launch beats a broken launch."
+  - "Done is better than perfect."
+  - "A missed alert is cheaper than a false page."
+  - "An honest estimate is worth more than an optimistic plan."
+  - "A clear no is better than a vague yes."
+  - "Boring is better than clever"
+---
+rule: slogan-sentence-run
+should_not_fire:
+  - "The build failed. The team fixed it."
+  - "He laughed. She didn't."
+  - "It rained. We stayed in."
+  - "Click Save. Then close the dialog."
+  - "turn right on elm. cross main, oak, and pine."
+  - "Maria came in second. Tomas wanted to quit."
+  - {document: {title: "Notes", items: ["Owners decide", "Plans change slowly."]}}
+  - "Left hand drive! Definitely not ready!"
+  - "Run the tests. Fix the failures."
+  - "Prices rose 4% in May. Wages fell."
+  - "The parser reads each file once and caches the tokens. Later passes reuse them."
+should_fire:
+  - "Teams change. Contracts stay."
+  - "Write first. Edit second."
+  - "Save the draft first. Publish the page second."
+  - "Ship small. Measure often. Scale on proof."
+  - "Prices rise. Margins shrink."
+  - "Start narrow. Prove value. Expand carefully."
+  - "Code ships. Docs lag."
+  - "Owners decide. Agents suggest."
+  - "Listen first. Build second."
+  - "Keep scope tight. Make risk visible. Grow on results."
+  - "Customers leave. Records stay."
+  - "Plans change. Principles don't."
+  - "We migrated the billing tables last week. Teams change. Contracts stay."
+---
+rule: slogan-imperative-title
+should_not_fire:
+  - {document: {title: "Install the package"}}
+  - {document: {title: "Configure the database connection"}}
+  - {document: {title: "Run the tests"}}
+  - {document: {title: "Close the file handle"}}
+  - {document: {title: "Build the Docker image"}}
+  - {document: {title: "Connect the printer to the network"}}
+  - {document: {title: "Protect the cables from water"}}
+should_fire:
+  - {document: {title: "Connect data to decisions"}}
+  - {document: {title: "Turn insight into impact"}}
+  - {document: {title: "Close the loop on quality"}}
+  - {document: {title: "Unlock value at every stage"}}
+  - {document: {title: "Build trust through transparency"}}
+  - {document: {title: "Drive adoption with clarity"}}
+  - {document: {title: "Capture what matters most"}}
+  - {document: {subtitle: "Make risk visible"}}
+  - {document: {title: "Close risk with clear owners"}}
+  - {document: {title: "Roadmap", items: ["Protect reader privacy"]}}
+  - {document: {title: "Accelerate growth with confidence"}}
+  - {document: {title: "Bridge strategy and execution"}}
+---
+rule: repeated-title-shape
+should_not_fire:
+  - {document: {title: "Field guide", sections: [{title: "Installation", text: "Run the installer."}, {title: "Configuration", text: "Edit the file."}, {title: "Upgrading from version 2", text: "Back up first."}, {title: "Known issues", text: "None so far."}]}}
+  - {document: {title: "Quarterly review", sections: [{title: "Revenue by region", text: "Sales rose in May."}, {title: "Two teams. One goal.", text: "Support joined sales."}, {title: "Hiring plan for the third quarter", text: "We hire four people."}, {title: "Open risks", text: "The vendor may slip."}, {title: "Budget", text: "Spend held flat."}]}}
+  - {document: {title: "Notes", sections: [{title: "Speed is not quality.", text: "We measure both."}, {title: "Next steps", text: "Ship the fix."}]}}
+should_fire:
+  - {document: {title: "Platform plan", sections: [{title: "Two regions. One ledger.", text: "Both regions post to one ledger."}, {title: "Five feeds. No guesswork.", text: "Each feed has a contract."}, {title: "Speed is not quality.", text: "We track both."}, {title: "Owners decide. Agents suggest.", text: "Agents draft changes."}, {title: "Earn trust with every release.", text: "Each release has a gate."}]}}
+  - {document: {title: "Data strategy", sections: [{title: "Data is not insight.", text: "Dashboards need owners."}, {title: "Visibility is not control.", text: "Alerts need runbooks."}, {title: "A demo is not a product.", text: "Billing is missing."}, {title: "Uptime is not reliability.", text: "Errors still reach users."}]}}
+  - {document: {title: "Three teams. One roadmap.", sections: [{title: "One backlog. Many owners.", text: "Each item has an owner."}, {title: "Small bets. Fast feedback.", text: "Each bet lasts two weeks."}, {title: "Clear gates. No surprises.", text: "Gates are written down."}, {title: "Pricing overview", text: "Plans start at ten dollars."}]}}
