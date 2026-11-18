@@ -5,7 +5,11 @@ should_not_fire:
   - "I hope this plan works for the team."
   - "Certainly the river rose after the storm."
   - "Getting Started"
+  - "If you're right about the date, we ship Friday."
+  - "The reply said \"You're right.\" and nothing else."
 should_fire:
+  - "You're right. The plan needs a second pass."
+  - "You're absolutely right. I missed the date."
   - "Here is the summary you asked for. I hope this helps!"
   - "As an AI language model, I cannot browse the web."
   - "Would you like me to expand the second section?"

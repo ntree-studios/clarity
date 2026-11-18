@@ -574,6 +574,7 @@ Structural. Write a Python function and register it in `src/clarity/matchers/str
 - `comma_splice`: 
 - `compound_chain`: Runs of noun modifiers: 'quality score threshold'.
 - `consecutive_fragments`: 
+- `dangling_colon`: 
 - `definition_chain`: A paragraph that is mostly a run of definitions, which reads as a glossary and not as
 - `em_dash`: 
 - `escalation_window`: 'not' + just/only within a few tokens, then a pivot (but, it, a comma) within the window.
@@ -595,7 +596,6 @@ Structural. Write a Python function and register it in `src/clarity/matchers/str
 - `rare_punctuation_context`: 
 - `redundant_closer`: A short last sentence that adds few content lemmas the paragraph has not already used.
 - `repeated_ngram`: A phrase the writer leans on: 3+ occurrences, spaced apart, with no proper nouns.
-- `rule_of_three`: 
 - `run_on_missing_comma`: 
 - `section_restatement`: 
 - `sentence_length_variance`: 

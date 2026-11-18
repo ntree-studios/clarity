@@ -56,7 +56,7 @@ pattern node the finding spans), `concreteness_max`, `suppress_if` (see below),
 `next_lemma`.
 
 `backend: structural`. Fields: `function` (a registered Python function) and `params`. Built-in
-functions include `escalation_window`, `rule_of_three`, `consecutive_fragments`,
+functions include `escalation_window`, `consecutive_fragments`,
 `question_answer`, `section_restatement`, `sentence_restatement`, `redundant_closer`,
 `hedge_stacking`, `long_sentence`, `repeated_ngram`, `figurative_cost`. A new function needs code;
 YAML can only configure existing ones.

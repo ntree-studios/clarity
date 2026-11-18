@@ -19,6 +19,9 @@
 - "AWS wants a token."
 - "The CPU decided to retry."
 - "The code knows the schema."
+- "The billing systems do not agree on who a customer is."
+- "Both databases disagree about which user owns the account."
+- "The three services never agree on the order."
 "should_not_fire":
 - "The committee decided to wait. She knows the answer. Washington insists on it."
 - "The FBI wants a warrant."
@@ -38,6 +41,10 @@
 - "The team believes in it."
 - "The dog wants a walk."
 - "The company refuses to pay."
+- "The two nurses agree on the plan."
+- "The figures agree with last year."
+- "The two reports disagree about the date."
+- "The data agree on one point."
 - "Maria argues the point."
 - "Everyone knows that."
 ---

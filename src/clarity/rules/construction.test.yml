@@ -72,3 +72,60 @@ should_fire:
   - "The museum serves as a reminder of the war."
   - "The town boasts a rich history."
   - "It stands as a testament to the builders."
+---
+"rule": "not-yet-placement"
+"should_fire":
+- "The team does not yet ingest nine more systems."
+- "The feature has not yet shipped."
+- "The old API is not yet supported."
+- "We cannot yet export the report."
+"should_not_fire":
+- "The team does not ingest nine more systems yet."
+- "The team doesn't ingest nine more systems yet."
+- "It is not yet noon."
+- "The feature has not shipped."
+- "Not yet."
+---
+"rule": "stock-obstacle-idiom"
+"should_fire":
+- "Six gaps stand in the way."
+- "A missing key stands in the way of the launch."
+- "Nothing stood in the way of the merge."
+"should_not_fire":
+- "Six gaps block the launch."
+- "The truck stood in the road."
+- "She stood by the way out."
+---
+"rule": "data-sits-in"
+"should_fire":
+- "The records Acme needs sit in 13 systems."
+- "The data sits in two warehouses."
+- "Customer files sit in three tools."
+"should_not_fire":
+- "The records are stored in 13 systems."
+- "The cat sits in the window."
+- "She sits in on the weekly meeting."
+---
+"rule": "verb-then-no-noun"
+"should_fire":
+- "The vendors can integrate but publish no documentation."
+- "Each tool exposes no public API."
+- "Three vendors provide no export."
+"should_not_fire":
+- "The vendors do not publish documentation."
+- "The team has no documentation."
+- "There is no documentation."
+- "No documentation exists."
+- "It made no difference."
+- "She took no questions."
+---
+"rule": "dangling-colon"
+"should_fire":
+- "Six gaps remain:"
+- "The records have three problems:"
+- "Here is the plan. The team has four tasks:"
+"should_not_fire":
+- "Six gaps remain: keys, names and dates."
+- "Note: the build failed."
+- "The meeting starts at 3:30 today."
+- "Here are the gaps: keys. The team will fix them."
