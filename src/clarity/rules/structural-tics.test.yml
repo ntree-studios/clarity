@@ -1,17 +1,4 @@
 # Fixtures. Write should_not_fire first: it proves the rule leaves normal prose alone.
-"rule": "rule-of-three"
-"should_fire":
-- "It is faster, cheaper, and more reliable. The plan is simple, clear, and bold."
-- "We need real speed, wider scale, and better safety. The launch is quiet, careful, and slow."
-"should_not_fire":
-- "It is faster, cheaper, and more reliable."
-- "Track it by store, aisle, and shelf. Report it by region, month, and team."
-- "Each section takes a title, subtitle, text and items."
-- "The export lists field names, section paths and line numbers."
-- "It is fast and cheap."
-- "Ana and Ben went home."
-- "The dog barked."
----
 "rule": "fragment-triad"
 "should_fire":
 - "Not fast. Not cheap. Just broken."

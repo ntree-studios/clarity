@@ -208,7 +208,7 @@ Median score with no profile, human folder vs Opus / Sonnet / Haiku:
 
 The pack does not separate this text from human writing. None of the seven rules scored above
 fired once on it, and it contains no em-dash. The rules that fire more on Claude than on people
-are `rule-of-three` (about 2x), `wandering-paragraph` and `template-placeholder` (the emails
+are `wandering-paragraph` and `template-placeholder` (the emails
 end in `[Your name]`, which the requests left open). The weak-writing rules (long sentences,
 passives, noun stacks, run-ons) fire less on Claude than on people, which lifts its scores.
 
@@ -267,11 +267,8 @@ the number of documents with a hit. Scripts and output: `run-2026-11-15/t16/`.
 | `trailing-negation` | adds ", not X, so …", "VERB, never VERB", "VERB instead of VERB-ing" | opinion 0.15 vs 0.95 (6.5x, 73 AI docs); news 0.12 vs 0.57 (4.6x, 57) |
 | `what-matters` | matches every form of "matter" ("the months that matter most") | news 0.02 vs 0.09 (5.7x, 11 AI docs) |
 | `abstract-physical-verb-catalogued` | adds "turns X into", "opens … dollars", "holds … down", "earns the next" | opinion 0.02 vs 0.14 (8.6x, 17 AI docs) |
-| `rule-of-three` | fires only when one block (paragraph, title or item) holds two or more lists of three; plain noun lists such as "region, month, and team" are skipped | student essays 0.21 vs 1.33 (6.2x, 51 AI docs); opinion 1.42 vs 4.67 (3.3x, 171 AI docs) |
 
-The old `rule-of-three` (any single list of three) was about 2x on these corpora. People were
-never higher than AI on the density version. Human business text (1.26 vs 3.09) and technical
-text (0.48 vs 0.79) stay under 3x.
+The `rule-of-three` rule was removed. In real use it flagged ordinary lists more often than it caught slop.
 
 `stock-title-shape` (a short label, a colon and a claim; "N things, one thing"; ", and what…";
 ", each one …-ing") and `weak-title` (two or more of stock-title-shape, noun-stacking and an

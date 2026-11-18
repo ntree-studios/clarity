@@ -258,20 +258,73 @@ rules:
     severity: warning
     confidence: inferred
     message: '"Cost" used figuratively. It means money or true cost; say what actually happens.'
-  - id: rule-of-three
-    description: "Two or more lists of three in one paragraph, such as \"fast, cheap, and reliable\" next to \"clear, simple, and bold\". One triad is normal; a habit of them reads as rhythm for its own sake. AI-written essays and opinion pieces use the habit several times as often as people do. Titles and list items count as separate blocks, and plain lists of things are skipped."
-    remediation: "Keep only the items you can back with a fact, or replace the list with one specific claim. \"It is fast, cheap, and reliable\" becomes \"It answers in 50 ms.\""
-    applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
-    category: structural-tics
-    backend: structural
-    function: rule_of_three
+  - id: not-yet-placement
+    description: "\"Not yet\" placed before the verb, as in \"does not yet ingest\" or \"has not yet shipped\". It reads as stiff, old-fashioned prose and the negation and \"yet\" pull against each other."
+    remediation: "Move \"yet\" to the end. \"The team does not yet ingest nine more systems\" becomes \"The team does not ingest nine more systems yet.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
+    category: construction
+    backend: dependency
     max_per_1k: 0
     severity: warning
     confidence: exact
-    message: Rule-of-three lists, two or more in one paragraph, title or item.
-    # One triad is fine; the habit is the tic. Plain noun lists ("region, month, and team")
-    # are lists of things and are skipped.
-    params: {chain_length: 3, same_pos: true, skip_plain_lists: true, min_per_block: 2}
+    message: '"Not yet" before the verb. Put "yet" at the end of the clause.'
+    patterns:
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {POS: VERB}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: neg, RIGHT_ATTRS: {LOWER: not, DEP: neg}}
+        - {LEFT_ID: neg, REL_OP: ".", RIGHT_ID: yet, RIGHT_ATTRS: {LOWER: yet, DEP: advmod}}
+    anchor: yet
+  - id: stock-obstacle-idiom
+    description: "\"Stand in the way\" for an obstacle, as in \"six gaps stand in the way\". It is a stock idiom that names no actual blocker."
+    remediation: "Say what the obstacle stops. \"Six gaps stand in the way\" becomes \"Six gaps block the migration.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
+    category: construction
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    match: lower
+    message: Stock idiom for an obstacle. Say what is blocked.
+    lower_phrases: [stand in the way, stands in the way, stood in the way, standing in the way]
+  - id: data-sits-in
+    description: "\"Sit\" used for where data is kept, as in \"the records sit in 13 systems\". The verb pictures an object resting somewhere and says nothing about how the data is stored or used."
+    remediation: "Use a plain verb. \"The records sit in 13 systems\" becomes \"The records are stored in 13 systems.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
+    category: construction
+    backend: dependency
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: '"Sit" for where data is kept. Use "are stored" or "live in".'
+    patterns:
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: sit, POS: VERB}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj, LEMMA: {IN: [record, data, datum, information, file, document]}}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: loc, RIGHT_ATTRS: {LOWER: in, DEP: prep}}
+    anchor: verb
+  - id: verb-then-no-noun
+    description: "A verb followed by \"no\" and its object, as in \"publish no documentation\". The negation sits on the noun, so the sentence says the thing does not exist when the writer means the subject does not do the action."
+    remediation: "Negate the verb. \"The vendors publish no documentation\" becomes \"The vendors do not publish documentation.\" Verbs such as \"have\", \"make\" and \"take\" are skipped because \"has no\" is plain English."
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
+    category: construction
+    backend: dependency
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: '"No" negates the noun, not the action. Negate the verb: "do not publish documentation".'
+    patterns:
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {POS: VERB, LEMMA: {NOT_IN: [have, be, make, take, do, see, give]}}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: obj, RIGHT_ATTRS: {DEP: dobj}}
+        - {LEFT_ID: obj, REL_OP: ">", RIGHT_ID: negator, RIGHT_ATTRS: {LOWER: "no", DEP: det}}
+    anchor: negator
+  - id: dangling-colon
+    description: "A text that ends on a colon, as in \"Six gaps stand in the way:\" with nothing after it. The sentence promises a list or an explanation and the reader gets neither."
+    remediation: "Add the list or the explanation, or end the sentence with a period and give the content in the next sentence."
+    applies_to: [text, items]  # checks the last token of the whole input
+    category: construction
+    backend: structural
+    function: dangling_colon
+    max_per_1k: 0
+    severity: warning
+    confidence: exact
+    message: Colon that introduces nothing. Add what it promises or end the sentence.
   - id: stock-title-shape
     description: "A title built on a stock pattern. One is a short label, a colon and a claim, as in \"Search: built for scale\". Another is \"N things, one thing\", as in \"Two teams, one goal\". Others end in \", and what it means\" or in \", each one\" plus an \"-ing\" verb. These shapes sound like a point without stating one. Human headings in the test corpora never matched them."
     remediation: "Write the title as the point of the section in plain words. \"Two teams, one goal\" becomes \"Sales and support now share one ticket queue.\""
@@ -529,10 +582,10 @@ rules:
       require_inanimate: true
       # Pairs handled by the exemption sub-rules below.
       exclude:
-        - {subjects: [report, contract, paper, study, sign, section, clause, article, document, letter, email, law, statute, policy], verbs: [say, tell, suggest, argue, insist, admit, claim, state, whisper, scream, promise, warn]}
-        - {subjects: [data, datum, evidence, results, result, numbers, number, findings, finding, analysis, metrics, metric], verbs: [suggest, show, indicate, point, want, decide, choose, try, refuse, prefer, intend, seek, love, hate, enjoy, suffer, struggle, fear, care, see, notice, watch, hear, listen, feel]}
+        - {subjects: [report, contract, paper, study, sign, section, clause, article, document, letter, email, law, statute, policy], verbs: [say, tell, suggest, argue, insist, admit, claim, state, whisper, scream, promise, warn, agree, disagree]}
+        - {subjects: [data, datum, evidence, results, result, numbers, number, figures, figure, findings, finding, analysis, metrics, metric], verbs: [agree, disagree, suggest, show, indicate, point, want, decide, choose, try, refuse, prefer, intend, seek, love, hate, enjoy, suffer, struggle, fear, care, see, notice, watch, hear, listen, feel]}
     patterns:
-      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [say, tell, suggest, argue, insist, admit, claim, state, whisper, scream, promise, warn, know, believe, think, remember, understand, realize, assume, expect, want, decide, choose, try, refuse, prefer, intend, seek, see, notice, watch, hear, listen, feel, love, hate, enjoy, suffer, struggle, fear, care]}, POS: VERB}}
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [say, tell, suggest, argue, insist, admit, claim, state, whisper, scream, promise, warn, know, believe, think, remember, understand, realize, assume, expect, want, decide, choose, try, refuse, prefer, intend, seek, see, notice, watch, hear, listen, feel, love, hate, enjoy, suffer, struggle, fear, care, agree, disagree]}, POS: VERB}}
         - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
     anchor: subj
   - id: document-source
@@ -562,7 +615,7 @@ rules:
     confidence: inferred
     message: Data as speaker ("the data suggest"). Standard English, allowed in small doses.
     params:
-      subjects: [data, datum, evidence, results, result, numbers, number, findings, finding, analysis, metrics, metric]
+      subjects: [data, datum, evidence, results, result, numbers, number, figures, figure, findings, finding, analysis, metrics, metric]
     patterns:
       - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [suggest, show, indicate, point]}, POS: VERB}}
         - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
@@ -578,7 +631,7 @@ rules:
     confidence: inferred
     message: Data given wants, feelings or perception.
     params:
-      subjects: [data, datum, evidence, results, result, numbers, number, findings, finding, analysis, metrics, metric]
+      subjects: [data, datum, evidence, results, result, numbers, number, figures, figure, findings, finding, analysis, metrics, metric]
     patterns:
       - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [want, decide, choose, try, refuse, prefer, intend, seek, love, hate, enjoy, suffer, struggle, fear, care, see, notice, watch, hear, listen, feel]}, POS: VERB}}
         - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
@@ -1098,7 +1151,6 @@ rules:
   - id: assistant-leakage
     description: "Chat-assistant text left in a draft, such as \"I hope this helps\", \"Certainly!\" or \"as an AI language model\". Readers can tell the text was pasted from a chat. A phrase inside quotation marks is skipped."
     remediation: "Delete the line, along with any offer to revise or any greeting to the reader."
-    experimental: true  # until calibrated on the corpora (task 7)
     applies_to: [title, subtitle, text, items]  # phrase-level tic; it shows in a heading too
     category: artifacts
     max_per_1k: 0
@@ -1111,7 +1163,7 @@ rules:
     lower_phrases: ["i hope this helps", "certainly!", "would you like me to", "is there anything else i can",
       "here's a revised version", "here is a revised version", "here's the revised", "as an ai language model",
       "as an ai model", "as of my last knowledge update", "as of my knowledge cutoff", "as of my last update",
-      "great question!", "you're absolutely right!", "i hope this message finds you well",
+      "great question!", "you're absolutely right!", "you're absolutely right.", "you're right.", "i hope this message finds you well",
       "here's a template", "here is a template", "feel free to adjust", "feel free to customize"]
   - id: template-placeholder
     description: "An unfilled placeholder such as \"[Your name]\", \"INSERT_DATE\", \"2026-XX-XX\", \"example.com/\" or \"delete this section before submission\". The reader sees a draft that nobody finished."

@@ -91,71 +91,14 @@ def escalation_window(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
     return spans
 
 
-_MODIFIERS = {"amod", "det", "nummod", "poss", "prep", "advmod", "acl", "relcl", "compound", "dobj"}
-
-
-def _bare(tok: Token) -> bool:
-    """A noun or name with no modifier or object of its own, as in a plain list of things."""
-    return tok.pos_ in {"NOUN", "PROPN"} and not any(c.dep_ in _MODIFIERS for c in tok.children)
-
-
-def _noun_phrase(tok: Token, first: bool) -> bool:
-    """A short phrase made only of nouns: a head noun with at most one bare noun before it, as in
-    "field names". The first item of a list may also open with a determiner."""
-    if tok.pos_ not in {"NOUN", "PROPN"}:
-        return False
-
-    others = [c for c in tok.children if not (first and c.dep_ == "det")]
-
-    return len(others) <= 1 and all(c.dep_ == "compound" and _bare(c) for c in others)
-
-
-def _plain_list(members: list[Token]) -> bool:
-    """True when every member is a bare noun or a short all-noun phrase."""
-    lead = min(m.i for m in members)
-
-    return all(_noun_phrase(m, m.i == lead) for m in members)
-
-
 @register
-def rule_of_three(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
-    spans: list[CharSpan] = []
+def dangling_colon(doc: Doc, rule: Rule, ctx: Context) -> list[CharSpan]:
+    words = [t for t in doc if not t.is_space]
 
-    for tok in doc:
-        conj = list(tok.conjuncts)
+    if not words or words[-1].text != ":":
+        return []
 
-        if tok.dep_ == "conj" or len(conj) < 2:
-            continue
-
-        members = [tok, *conj]
-
-        if rule.params.get("same_pos", False) and len({m.pos_ for m in members}) > 1:
-            continue
-
-        if len(members) < int(rule.params.get("chain_length", 3)):
-            continue
-
-        if rule.params.get("skip_plain_lists", False) and _plain_list(members):
-            continue  # "region, month, and team" lists things; it has no rhythm to flag
-
-        start = min(m.left_edge.i for m in members)
-        end = max(m.right_edge.i for m in members) + 1
-        spans.append(token_span(doc, start, end))
-
-    return _dense(spans, int(rule.params.get("min_per_block", 1)), ctx)
-
-
-def _dense(spans: list[CharSpan], least: int, ctx: Context) -> list[CharSpan]:
-    """Only the spans in a block (paragraph, title or item) that holds at least `least` of them."""
-    s = ctx.analysis.structure if ctx.analysis else None
-
-    if least <= 1 or s is None:
-        return spans
-
-    key = [s.block_at(a) for a, _ in spans]
-    counts = {id(k): sum(1 for x in key if x is k) for k in key}
-
-    return [sp for sp, k in zip(spans, key, strict=True) if counts[id(k)] >= least]
+    return [token_span(doc, words[-1].i, words[-1].i + 1)]
 
 
 def _is_markup_or_caption(sent: Span) -> bool:
