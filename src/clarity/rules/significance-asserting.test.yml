@@ -24,6 +24,9 @@
 ---
 "rule": "sig-frame"
 "should_fire":
+- "The key takeaway is that caching matters."
+- "The main takeaway is the speedup."
+- "The bottom line is that it works."
 - "The real question is whether it works."
 - "The real question is whether anyone reads this."
 - "The short answer is yes."

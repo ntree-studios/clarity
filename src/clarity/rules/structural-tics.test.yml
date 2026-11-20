@@ -270,3 +270,22 @@ should_fire:
   - {document: {title: "Platform plan", sections: [{title: "Two regions. One ledger.", text: "Both regions post to one ledger."}, {title: "Five feeds. No guesswork.", text: "Each feed has a contract."}, {title: "Speed is not quality.", text: "We track both."}, {title: "Owners decide. Agents suggest.", text: "Agents draft changes."}, {title: "Earn trust with every release.", text: "Each release has a gate."}]}}
   - {document: {title: "Data strategy", sections: [{title: "Data is not insight.", text: "Dashboards need owners."}, {title: "Visibility is not control.", text: "Alerts need runbooks."}, {title: "A demo is not a product.", text: "Billing is missing."}, {title: "Uptime is not reliability.", text: "Errors still reach users."}]}}
   - {document: {title: "Three teams. One roadmap.", sections: [{title: "One backlog. Many owners.", text: "Each item has an owner."}, {title: "Small bets. Fast feedback.", text: "Each bet lasts two weeks."}, {title: "Clear gates. No surprises.", text: "Gates are written down."}, {title: "Pricing overview", text: "Plans start at ten dollars."}]}}
+---
+rule: abstract-triad
+should_fire:
+  - "The system is fast, reliable, and secure."
+  - "The plan is clear, simple, and effective."
+  - "It offers speed, reliability, and security."
+  - "The platform is scalable, flexible, and resilient."
+  - "Good teams value trust, clarity, and accountability."
+  - "The tool is powerful, intuitive, and efficient."
+should_not_fire:
+  - "The flag is red, white, and blue."
+  - "Buy eggs, milk, and bread."
+  - "The pump is cheap, loud, and heavy."
+  - "Add salt, pepper, and butter."
+  - "She visited Paris, Rome, and Madrid."
+  - "The system is fast and reliable."
+  - "It offers speed and reliability."
+  - "Install, configure, and run the tool."
+  - "The release shipped on Monday, Tuesday, and Wednesday."
