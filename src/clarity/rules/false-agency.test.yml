@@ -75,6 +75,39 @@
 - "The data suggest a clear trend."
 - "The dataset has three columns."
 ---
+rule: false-agency
+should_fire:
+  - "Validate says when the input is malformed."
+  - "Lint warns when an import is unused."
+  - "Build tells you which step failed."
+  - "The compiler wants a semicolon."
+  - "The scheduler decided to retry the job."
+  - "The server refuses to start without a key."
+  - "The driver refuses to load."
+  - "The linter refuses to run without a config."
+  - "The bundler decided to skip the file."
+  - "Format tells you which lines changed."
+  - "Compile says which file is broken."
+  - "Sync warns when the remote is ahead."
+  - "Deploy warns when the target is stale."
+  - "Search says nothing when the index is empty."
+  - "Check warns when the cache is stale."
+  - "Preview says how the page looks to readers."
+should_not_fire:
+  - "Google says the input is malformed."
+  - "Judge says the field is missing."
+  - "Nurse warns when the cache is stale."
+  - "Coach tells you which lines changed."
+  - "The editor refused to publish the story."
+  - "The manager decided to wait."
+  - "Jordan tells you which lines changed."
+  - "Taylor says which file is broken."
+  - "Mark says the input is malformed."
+  - "Pat tells you which step failed."
+  - "Will warns when the cache is stale."
+  - "Jordan warns when an import is unused."
+  - "Sam says how the page looks to readers."
+---
 rule: abstract-physical-verb
 should_not_fire:
   - "The load-bearing wall carries the roof."
@@ -95,6 +128,11 @@ should_fire:
 ---
 rule: abstract-physical-verb-catalogued
 should_not_fire:
+  - "The water bleeds into the carpet."
+  - "Blood bleeds into the gauze."
+  - "The signal ripples through the cable."
+  - "The cable threads through the wall."
+  - "The waterfall cascades over the rocks."
   - "She turned the garage into a studio."
   - "The guard opened the gate."
   - "Hold the button down for five seconds."
@@ -111,6 +149,10 @@ should_not_fire:
   - "The river rises in the hills, and from there it flows north."
   - "Heat flows from the warmer body to the cooler one."
 should_fire:
+  - "Doubt bleeds into every decision the team makes."
+  - "Uncertainty ripples through the whole roadmap."
+  - "Distrust weaves through every chapter of the audit."
+  - "Optimism cascades through the sales floor."
   - "The new process turns every complaint into a ticket."
   - "The redesign opens new revenue for the store."
   - "The delay holds the conversion rate down."
@@ -134,3 +176,45 @@ should_fire:
   - "That tracks."
   - "The math checks out."
   - "This maps to our goals."
+---
+rule: feature-works
+should_fire:
+  - "A file anywhere in the repository works without a declaration."
+  - "The cache works without a config."
+  - "Every endpoint works without a token."
+  - "The plugin works with no setup."
+  - "Trust works without a contract."
+  - "The old format still works without a migration."
+should_not_fire:
+  - "The nurse works without pay."
+  - "Pia works without a break."
+  - "She works without a net."
+  - "The engineer in the ward works without pay."
+  - "They work without supervision."
+  - "The works without a roof were left to rot."
+  - "Maria works with children."
+  - "The pump works against the current."
+---
+rule: says-so-tag
+should_fire:
+  - "The tool checks the file and says so."
+  - "The tool checks the file and says as much."
+  - "The log records the failure and says so in plain words."
+  - "The error names the cause and says so plainly."
+  - "The check fails and says so."
+  - "The report admits the gap and says so."
+  - "The config declares the default and says as much in a comment."
+  - "The linter finds the problem, and says so."
+  - "The page loads the image and tells you so."
+  - "The validator rejects the file and says so clearly."
+should_not_fire:
+  - "She read the memo and said so."
+  - "He was wrong and said so."
+  - "The engineer found the bug and says so in the ticket."
+  - "I disagree and I say so."
+  - "Maria checked the file and told us so."
+  - "The tool says so."
+  - "The docs say so."
+  - "If the file is missing, the tool says so."
+  - "The tool checks the file and prints the result."
+  - "The tool says so much about the format."

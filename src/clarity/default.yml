@@ -146,7 +146,8 @@ rules:
     severity: warning
     confidence: exact
     message: Announces significance instead of stating it.
-    phrases: [the real question is, the short answer is, what matters here is, the thing to understand is]
+    phrases: [the real question is, the short answer is, what matters here is, the thing to understand is, the key takeaway is, the main takeaway is,
+      the bottom line is]
   - id: discovery-narration
     description: "Narration that presents a plain fact as a surprise, using \"it turns out\", \"as it happens\" or \"funnily enough\". The reveal adds drama and no information."
     remediation: "Report the fact plainly. \"It turns out the disk was full\" becomes \"The disk was full.\""
@@ -222,7 +223,8 @@ rules:
     confidence: exact
     position: clause-initial
     message: Filler transition. Start with the content.
-    phrases: [that said, ultimately, at the end of the day, when it comes to, in terms of, here's the thing, the reality is, in short]
+    phrases: [that said, ultimately, at the end of the day, when it comes to, in terms of, here's the thing, the reality is, in short,
+      moreover, furthermore, in conclusion, in summary, all in all, at its core, let's break it down, let's dive in, let's dive into]
   - id: corporate-tier-a
     description: "Corporate buzzwords such as \"leverage\", \"seamless\", \"robust\", \"game-changer\" and \"a testament to\". They sound like marketing and tell the reader little about what the thing does."
     remediation: "Use the plain word or the specific fact. \"We leverage the cache\" becomes \"We use the cache\", and \"a seamless upgrade\" becomes \"an upgrade with no downtime\"."
@@ -233,7 +235,9 @@ rules:
     confidence: exact
     message: Corporate vocabulary. Use a plainer word.
     phrases: [leverage, unlock, empower, seamless, robust, holistic, streamline, elevate, transform, underscore, speaks volumes]
-    lower_phrases: [game-changer, game changer, best-in-class, cutting-edge, a testament to]
+    lower_phrases: [game-changer, game changer, best-in-class, cutting-edge, a testament to, plays a vital role, play a vital role,
+      plays a crucial role, plays a key role, a myriad of, bustling city, ever-evolving, changing landscape, shifting landscape,
+      evolving landscape]
   - id: corporate-tier-b
     description: "\"Delve into\", \"dive into\" and \"navigate\" with an abstract object, or \"landscape of\", \"realm of\", \"tapestry of\" and \"ecosystem of\" before an abstract noun. The metaphor is vague and the reader has to guess the literal meaning."
     remediation: "Say the literal action or thing. \"We dive into the results\" becomes \"We compare the results by region\", and \"the landscape of payments\" becomes \"payment companies\"."
@@ -431,6 +435,25 @@ rules:
     confidence: exact
     message: Consecutive sentence fragments.
     params: {min_run: 2, boost_on_shared_opener: true}
+  - id: abstract-triad
+    description: "A list of three abstract adjectives or nouns, such as \"fast, reliable, and secure\" or \"trust, clarity, and accountability\". Models reach for three because it sounds complete, and the third item often adds nothing. People write triads too, so this is a weak signal that counts only past a small allowance."
+    remediation: "Keep the item you can back with a fact and say what it means. \"Fast, reliable, and secure\" becomes \"Requests finish in 40 ms and the service has not gone down since March.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
+    category: structural-tics
+    backend: dependency
+    max_per_1k: 2
+    severity: info
+    confidence: inferred
+    anchor: abs
+    concreteness_max: 3.7
+    message: Triad of abstract words. Keep the one you can support and say what it means.
+    patterns:
+      - - {RIGHT_ID: first, RIGHT_ATTRS: {POS: ADJ}}
+        - {LEFT_ID: first, REL_OP: ">", RIGHT_ID: second, RIGHT_ATTRS: {POS: ADJ, DEP: conj}}
+        - {LEFT_ID: second, REL_OP: ">", RIGHT_ID: abs, RIGHT_ATTRS: {POS: ADJ, DEP: conj}}
+      - - {RIGHT_ID: first, RIGHT_ATTRS: {POS: {IN: [NOUN, PROPN]}}}  # the tagger reads a sentence-medial "trust" as a name
+        - {LEFT_ID: first, REL_OP: ">", RIGHT_ID: second, RIGHT_ATTRS: {POS: NOUN, DEP: conj}}
+        - {LEFT_ID: second, REL_OP: ">", RIGHT_ID: abs, RIGHT_ATTRS: {POS: NOUN, DEP: conj}}
   - id: slogan-sentence-run
     description: "Two or more very short sentences in a row with no article, pronoun or number, such as \"Teams change. Contracts stay.\" or \"Ship small. Measure often. Scale on proof.\" Fragment-triad does not catch the run because each sentence has a verb. The reader still cannot tell who does what or when."
     remediation: "Join them into one sentence that names who acts and in which case. \"Teams change. Contracts stay.\" becomes \"When we reorganize a team, its supplier contracts stay with the company.\""
@@ -704,6 +727,60 @@ rules:
       - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [say, tell, suggest, argue, insist, admit, claim, state, whisper, scream, promise, warn, know, believe, think, remember, understand, realize, assume, expect, want, decide, choose, try, refuse, prefer, intend, seek, see, notice, watch, hear, listen, feel, love, hate, enjoy, suffer, struggle, fear, care, agree, disagree]}, POS: VERB}}
         - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
     anchor: subj
+  - id: feature-works
+    description: "A thing that \"works without\" something, as in \"the cache works without a config\". The verb credits the thing with effort and hides the rule, so the reader cannot tell what the software does or what they may leave out."
+    remediation: "State the rule as an instruction or a condition. Write \"You do not need to declare a file\" or \"Any file in the repository is allowed.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
+    category: false-agency
+    backend: dependency
+    max_per_1k: 0
+    severity: info
+    confidence: inferred
+    message: Inanimate subject that "works without" something. State what the reader may skip.
+    params:
+      require_inanimate: true
+    patterns:
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: work, POS: VERB}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: prep, RIGHT_ATTRS: {LOWER: without, DEP: prep}}
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: work, POS: VERB}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: prep, RIGHT_ATTRS: {LOWER: with, DEP: prep}}
+        - {LEFT_ID: prep, REL_OP: ">", RIGHT_ID: pob, RIGHT_ATTRS: {DEP: pobj}}
+        - {LEFT_ID: pob, REL_OP: ">", RIGHT_ID: neg, RIGHT_ATTRS: {LOWER: "no"}}
+      # The tagger reads "works" after a prepositional phrase as a noun ("A file anywhere in the
+      # repository works without a declaration"), leaving the subject as the sentence root.
+      - - {RIGHT_ID: subj, RIGHT_ATTRS: {DEP: ROOT, POS: NOUN}}
+        - {LEFT_ID: subj, REL_OP: ">>", RIGHT_ID: verb, RIGHT_ATTRS: {LOWER: works, POS: NOUN}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: prep, RIGHT_ATTRS: {LOWER: without, DEP: prep}}
+  - id: says-so-tag
+    description: "A coordinated tail that repeats what the clause already shows, such as \"checks the file and says so\", \"names the cause and says so plainly\" or \"records the failure and says as much\". The tool is credited with announcing its own action, and the reader gets the same fact twice."
+    remediation: "Delete the tail. \"The check fails and says so\" becomes \"The check fails.\" If the message matters, quote it: \"The check fails with 'file missing'.\""
+    applies_to: [text, items]  # sentence style; titles and subtitles are labels
+    category: false-agency
+    backend: dependency
+    max_per_1k: 0
+    severity: warning
+    confidence: inferred
+    message: Tail that restates the action ("and says so"). Delete it or quote the message.
+    params:
+      require_inanimate: true
+    patterns:
+      - - {RIGHT_ID: head, RIGHT_ATTRS: {POS: VERB}}
+        - {LEFT_ID: head, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
+        - {LEFT_ID: head, REL_OP: ">", RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [say, tell]}, DEP: conj}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: tag, RIGHT_ATTRS: {LOWER: so, DEP: advmod}}
+      - - {RIGHT_ID: head, RIGHT_ATTRS: {POS: VERB}}
+        - {LEFT_ID: head, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
+        - {LEFT_ID: head, REL_OP: ">", RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: say, DEP: conj}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: tag, RIGHT_ATTRS: {LOWER: much, DEP: dobj}}
+      # "and says so plainly" / "and says so in plain words": the tagger hangs "so" under the modifier
+      - - {RIGHT_ID: head, RIGHT_ATTRS: {POS: VERB}}
+        - {LEFT_ID: head, REL_OP: ">", RIGHT_ID: subj, RIGHT_ATTRS: {DEP: nsubj}}
+        - {LEFT_ID: head, REL_OP: ">", RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [say, tell]}, DEP: conj}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: mod, RIGHT_ATTRS: {LOWER: {IN: [in, plainly, clearly, explicitly,
+            openly, loudly, directly, outright, bluntly, politely]}}}
+        - {LEFT_ID: mod, REL_OP: ">", RIGHT_ID: tag, RIGHT_ATTRS: {LOWER: so, DEP: advmod}}
   - id: document-source
     description: "A document as the speaker, as in \"the report says\" or \"the contract states\". This is standard English; the rule fires only past four per thousand words, where the reader loses track of who wrote what."
     remediation: "Give the author when it helps, and vary the form. \"The study argues that...\" becomes \"The authors argue that...\""
@@ -1576,6 +1653,10 @@ rules:
       - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: lean, POS: VERB}}
         - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: prep, RIGHT_ATTRS: {LOWER: into}}
         - {LEFT_ID: prep, REL_OP: ">", RIGHT_ID: abs, RIGHT_ATTRS: {DEP: pobj}}
+      # "Doubt bleeds into every decision" / "Optimism ripples through the team"
+      - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: {IN: [bleed, ripple, thread, cascade, weave]}, POS: VERB}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: abs, RIGHT_ATTRS: {DEP: nsubj}}
+        - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: prep, RIGHT_ATTRS: {LOWER: {IN: [into, through, across, throughout]}, DEP: prep}}
       # "The new process turns every complaint into a ticket"
       - - {RIGHT_ID: verb, RIGHT_ATTRS: {LEMMA: turn, POS: VERB}}
         - {LEFT_ID: verb, REL_OP: ">", RIGHT_ID: abs, RIGHT_ATTRS: {DEP: nsubj}}
