@@ -9,7 +9,7 @@ ENV NLTK_DATA=/opt/nltk_data
 RUN pip install --no-cache-dir . \
  && python -m spacy download en_core_web_sm \
  && python -m nltk.downloader -d /opt/nltk_data \
-      wordnet brown universal_tagset punkt punkt_tab \
+      wordnet brown names universal_tagset punkt punkt_tab \
       averaged_perceptron_tagger averaged_perceptron_tagger_eng \
  && python -m clarity.punct_model
 
